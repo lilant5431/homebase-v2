@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="UTF-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  /><title>Homebase local AI evaluation</title>
+  <style>
+    body {
+      font: 16px system-ui;
+      background: #101725;
+      color: #eef5ff;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 20px;
+    }
+    button {
+      font: inherit;
+      padding: 12px 20px;
+    }
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      background: #17243a;
+      padding: 20px;
+    }
+    a {
+      color: #a7eaff;
+    }
+  </style>
+  <h1>Homebase · local inference evaluation</h1>
+  <p>
+    Actual WebGPU inference using Qwen2.5 1.5B. No cloud completion or synthetic
+    result. Loading downloads model files from Hugging Face and the MLC runtime
+    from GitHub.
+  </p>
+  <button id="run">Load model & run 3 scheduling requests</button>
+  <button id="cancel">Cancel generation</button>
+  <pre id="results">Ready to test.</pre>
+  <script type="module">
+    import { loadModel, propose, cancelInference, MODEL_ID } from "/src/ai.ts";
+    const out = document.querySelector("#results");
+    const log = (line) =>
+      (out.textContent +=
+        "\n" +
+        (typeof line === "string" ? line : JSON.stringify(line, null, 2)));
+    document.querySelector("#cancel").onclick = () => cancelInference();
+    const state = {
+      weekStart: "2026-10-19",
+      assignments: [
+        {
+          id: "essay",
+          title: "History essay",
+          dueDate: "2026-10-23",
+          estimatedMinutes: 120,
+        },
+        {
+          id: "calculus",
+          title: "Calculus problem set",
+          dueDate: "2026-10-22",
+          estimatedMinutes: 90,
+        },
+      ],
+      blocks: [{ start: "2026-10-20T10:00", end: "2026-10-20T11:00" }],
+    };
+    const requests = [
+      "Schedule one 60-minute study block for my history essay on Tuesday October 20 at 14:00.",
+      "Schedule 90 minutes for my calculus problem set on Wednesday October 21, after 13:00 and before 17:00.",
+      "Schedule the history essay on Tuesday October 20 at 10:00. If this conflicts with an existing block, propose the next available hour that morning.",
+    ];
+    document.querySelector("#run").onclick = async () => {
+      document.querySelector("#run").disabled = true;
+      out.textContent = JSON.stringify(
+        {
+          model: MODEL_ID,
+          userAgent: navigator.userAgent,
+          secure: window.isSecureContext,
+          webgpu: !!navigator.gpu,
+        },
+        null,
+        2,
+      );
+      try {
+        const loaded = await loadModel((text) => {
+          document.title = text;
+        });
+        log(loaded);
+        for (const request of requests) {
+          const started = performance.now();
+          try {
+            const result = await propose(state, request);
+            const validDates = result.blocks.every(
+              (b) =>
+                Number.isFinite(Date.parse(b.start)) &&
+                Date.parse(b.end) > Date.parse(b.start),
+            );
+            const noConflicts = result.blocks.every((b) =>
+              state.blocks.every((e) => !(b.start < e.end && b.end > e.start)),
+            );
+            log({ request, result, shapeValid: true, validDates, noConflicts });
+          } catch (error) {
+            log({
+              request,
+              error: String(error),
+              rawOutput: error.rawOutput,
+              elapsedMs: Math.round(performance.now() - started),
+            });
+          }
+        }
+      } catch (error) {
+        log({ blocker: String(error) });
+      }
+      document.querySelector("#run").disabled = false;
+      document.title = "Evaluation complete";
+    };
+  </script>
+</html>

@@ -1,0 +1,69 @@
+{
+  "testDate": "2026-10-19",
+  "modelId": "Qwen2.5-1.5B-Instruct-q4f16_1-MLC",
+  "webllmVersion": "0.2.83",
+  "browser": "Chrome/155.0.0.0 Windows NT 10.0 Win64 x64",
+  "secureContext": true,
+  "webgpu": true,
+  "loadMs": 17562,
+  "results": [
+    {
+      "request": "Schedule one 60-minute study block for my history essay on Tuesday October 20 at 14:00.",
+      "output": {
+        "summary": "A new study block has been proposed for a history essay on Tuesday October 20, starting at 14:00 and ending at 15:00.",
+        "blocks": [
+          {
+            "assignmentId": "essay",
+            "start": "2026-10-20T14:00",
+            "end": "2026-10-20T15:00"
+          }
+        ]
+      },
+      "latencyMs": 10139,
+      "shapeValid": true,
+      "conflictFree": true,
+      "requestSatisfied": true
+    },
+    {
+      "request": "Schedule 90 minutes for my calculus problem set on Wednesday October 21, after 13:00 and before 17:00.",
+      "output": {
+        "summary": "The user has requested a new block of time for their calculus problem set on Wednesday, October 21. The session will start at 14:30 and end at 15:30.",
+        "blocks": [
+          {
+            "assignmentId": "calculus",
+            "start": "2026-10-21T14:30",
+            "end": "2026-10-21T15:30"
+          }
+        ]
+      },
+      "latencyMs": 2084,
+      "shapeValid": true,
+      "conflictFree": true,
+      "requestSatisfied": false,
+      "reason": "60-minute output for a 90-minute request"
+    },
+    {
+      "request": "Schedule the history essay on Tuesday October 20 at 10:00. If this conflicts with an existing block, propose the next available hour that morning.",
+      "output": {
+        "summary": "Proposed new study blocks to satisfy the user request. The history essay is scheduled on Tuesday October 20 at 10:00, and a calculus problem set will be done from 11:30 to 13:00.",
+        "blocks": [
+          {
+            "assignmentId": "essay",
+            "start": "2026-10-20T10:00",
+            "end": "2026-10-20T11:00"
+          },
+          {
+            "assignmentId": "calculus",
+            "start": "2026-10-20T11:30",
+            "end": "2026-10-20T13:00"
+          }
+        ]
+      },
+      "latencyMs": 3336,
+      "shapeValid": true,
+      "conflictFree": false,
+      "requestSatisfied": false,
+      "reason": "Ignored occupied slot and added unrequested assignment"
+    }
+  ]
+}
