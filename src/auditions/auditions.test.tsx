@@ -5,6 +5,20 @@ import Auditions from "./Auditions";
 afterEach(() => vi.unstubAllGlobals());
 
 describe("isolated visual auditions", () => {
+  it("keeps the world workbench renderable even without graphics, storage or Workers", () => {
+    vi.stubGlobal("location", { hash: "#world" });
+    const forbidden = vi.fn(() => {
+      throw new Error("Real academic data is forbidden");
+    });
+    vi.stubGlobal("localStorage", { getItem: forbidden, setItem: forbidden });
+    vi.stubGlobal("Worker", forbidden);
+    const html = renderToStaticMarkup(<Auditions world />);
+    expect(html).toContain("au-world");
+    expect(html).toContain("Weekly calendar");
+    expect(html).toContain("Disable graphics");
+    expect(html).toContain("World instrument panel");
+    expect(forbidden).not.toHaveBeenCalled();
+  });
   it.each(["aether", "meridian", "prism"])(
     "%s renders academic fixtures without reading storage or starting a worker",
     (concept) => {

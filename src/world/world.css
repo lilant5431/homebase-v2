@@ -1,0 +1,674 @@
+.audition.au-world {
+  --ink: #f1eddf;
+  --muted: #c0c7c4;
+  --line: #c7dad333;
+  --accent: #d3ebeb;
+  --panel: #15252bcf;
+  --button: #e0dbbd;
+  --button-ink: #1e3034;
+  background: #263b44;
+  min-height: 100vh;
+}
+.world-render-surface {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: #344850;
+  pointer-events: none;
+}
+.world-render-surface canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.world-render-surface .world-canvas-failed {
+  visibility: hidden;
+}
+.audition.au-world:after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, #0c1b25a6, transparent 40%, #152a3110),
+    linear-gradient(0deg, #081a2490, transparent 60%);
+  pointer-events: none;
+}
+.audition.au-world .au-audition-bar {
+  background: #101f27e6;
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid #c6e2e02c;
+  height: 57px;
+  min-height: 57px;
+  padding: 9px 25px;
+  font-size: 10px;
+}
+.world-mode-bar {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+.world-mode-bar > a {
+  opacity: 0.8;
+  letter-spacing: 0;
+}
+.world-mode-bar > span {
+  color: #d2dac7;
+}
+.world-mode-bar > button {
+  border: 1px solid #acc4cb50;
+  padding: 6px 12px;
+  font-size: 10px;
+  letter-spacing: 0;
+}
+.world-mode-bar > button[aria-pressed="true"] {
+  background: #d4e3e0;
+  color: #233740;
+}
+.audition.au-world .au-shell {
+  max-width: 1800px;
+  padding: 0 4% 0 205px;
+  position: relative;
+}
+.audition.au-world .au-header {
+  position: fixed;
+  top: 57px;
+  bottom: 0;
+  left: 0;
+  width: 170px;
+  z-index: 4;
+  padding: 35px 21px 25px;
+  gap: 65px;
+  background: linear-gradient(90deg, #0c1a26db, #0c1a2666);
+  border-right: 1px solid #c7dad324;
+  backdrop-filter: blur(8px);
+}
+.audition.au-world .au-brand {
+  font:
+    24px/1.3 Cambria,
+    Georgia,
+    serif;
+  gap: 9px;
+  letter-spacing: -0.7px;
+}
+.audition.au-world .au-brand small {
+  font:
+    7px "Segoe UI",
+    sans-serif;
+  letter-spacing: 1.1px;
+  line-height: 1.7;
+  max-width: 110px;
+}
+.audition.au-world .au-brand svg {
+  width: 22px;
+  filter: drop-shadow(0 0 10px #d3eff299);
+}
+.audition.au-world .au-nav {
+  gap: 15px;
+}
+.audition.au-world .au-nav button {
+  font-size: 11px;
+  letter-spacing: 0.2px;
+  color: #d0dcd8;
+}
+.audition.au-world .au-nav button[aria-current] {
+  border-bottom-color: #c7e5e4;
+  color: #fff;
+}
+.audition.au-world .au-nav-number {
+  color: #b1cbcf;
+}
+.audition.au-world .au-profile {
+  font-size: 9px;
+  color: #b4c3c7;
+}
+.audition.au-world .au-profile b {
+  border-radius: 0;
+  background: #d1e4e213;
+}
+.audition.au-world .au-hero {
+  min-height: 315px;
+  padding: 32px 0 68px;
+  align-items: flex-start;
+}
+.audition.au-world .au-hero > div:first-child {
+  padding-top: 8px;
+  max-width: 660px;
+}
+.audition.au-world .au-hero h1 {
+  font:
+    400 clamp(40px, 4.8vw, 69px)/1.08 Cambria,
+    Georgia,
+    serif;
+  letter-spacing: -2.5px;
+  text-shadow: 0 4px 30px #122b35a0;
+  max-width: 620px;
+  margin: 18px 0 18px;
+}
+.audition.au-world .au-hero .au-kicker {
+  font-size: 8px;
+  letter-spacing: 1.6px;
+  color: #cfddd9;
+}
+.audition.au-world .au-hero p {
+  color: #e2e9e1;
+  font-size: 12px;
+  text-shadow: 0 2px 10px #132930;
+}
+.audition.au-world .au-hero-index {
+  display: none;
+}
+.audition.au-world .au-workflows {
+  grid-template-columns: minmax(0, 1fr) 245px;
+  gap: 23px;
+  margin-right: 0;
+  max-width: 1200px;
+}
+.audition.au-world .au-surface {
+  background: linear-gradient(145deg, #15252be8, #172e35c2);
+  border: 1px solid #cae5e145;
+  box-shadow:
+    inset 0 1px 0 #e3faf51c,
+    0 24px 65px #07182559;
+  backdrop-filter: blur(18px);
+  border-radius: 2px;
+}
+.audition.au-world .au-calendar {
+  background: #152830d9;
+  border-top: 1px solid #d2f5f27d;
+}
+.audition.au-world .au-section-head {
+  padding: 23px;
+}
+.audition.au-world .au-section-head h2 {
+  font:
+    24px Cambria,
+    Georgia,
+    serif;
+  margin-top: 8px;
+}
+.audition.au-world .au-day-head {
+  height: 60px;
+}
+.audition.au-world .au-time-grid {
+  height: 540px;
+}
+.audition.au-world .au-times > span {
+  height: 60px;
+}
+.audition.au-world .au-days {
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0 59px,
+    var(--line) 59px 60px
+  );
+}
+.audition.au-world .au-today {
+  background: #b2dbe218;
+  border-top: 1px solid #d6f5f4;
+}
+.audition.au-world .au-calendar-foot {
+  background: #0b202550;
+  font-size: 8px;
+  padding: 15px 19px;
+  gap: 10px;
+}
+.audition.au-world .au-event {
+  background: var(--event-bg);
+  box-shadow:
+    inset 0 1px 0 #e5f7ff22,
+    2px 3px 12px #030c1530;
+  border-radius: 2px;
+}
+.audition.au-world .au-event strong {
+  font-weight: 500;
+  line-height: 1.3;
+}
+.audition.au-world .au-event small {
+  font-size: 8px;
+}
+.audition.au-world .au-event:hover {
+  box-shadow: 0 0 24px #b4dceb30;
+  background: var(--event-bg);
+}
+.audition.au-world .lavender {
+  --event-bg: #454758e8;
+  --event-ink: #e3d7f6;
+  --event-border: #c5b9ef56;
+}
+.audition.au-world .blue {
+  --event-bg: #304f64eb;
+  --event-ink: #c4e9ff;
+  --event-border: #b5d8ff56;
+}
+.audition.au-world .peach {
+  --event-bg: #5b4a3de8;
+  --event-ink: #ffe1bd;
+  --event-border: #e8cdb356;
+}
+.audition.au-world .green {
+  --event-bg: #364e46ed;
+  --event-ink: #d5e8b6;
+  --event-border: #bfd0a056;
+}
+.audition.au-world .au-focus {
+  padding: 24px 20px;
+  background: linear-gradient(150deg, #7f969544, #1a3635cd);
+  border-top-color: #c9dcd2;
+}
+.audition.au-world .au-focus-symbol {
+  display: none;
+}
+.audition.au-world .au-focus h2 {
+  font:
+    27px/1.2 Cambria,
+    Georgia,
+    serif;
+}
+.audition.au-world .au-focus p {
+  font-size: 10px;
+  color: #d0dcd6;
+}
+.audition.au-world .au-action {
+  border-radius: 2px;
+  box-shadow:
+    inset 0 1px 0 #fff7,
+    0 5px 25px #06182030;
+  font-size: 10px;
+}
+.audition.au-world .au-upcoming {
+  padding: 0 1px;
+}
+.audition.au-world .au-upcoming strong {
+  font-size: 10px;
+}
+.audition.au-world .au-upcoming small {
+  font-size: 9px;
+  color: #d6e3df;
+}
+.audition.au-world .au-upcoming h2 {
+  font:
+    17px Cambria,
+    serif;
+}
+.audition.au-world .au-upcoming > div > span {
+  color: #d0d8cd;
+}
+.audition.au-world .au-upcoming > button {
+  background: #0e212675;
+  padding: 13px 10px;
+  backdrop-filter: blur(10px);
+}
+.audition.au-world .au-footer {
+  padding-bottom: 22px;
+  margin-top: 24px;
+  color: #d5e1dd;
+  font-size: 7px;
+}
+.audition.au-world .au-planning {
+  max-width: none;
+  padding: 29px;
+}
+.audition.au-world .au-planning h2 {
+  font-size: 34px;
+}
+.audition.au-world .au-detail {
+  background: #172d34f7;
+  backdrop-filter: blur(16px);
+  border-color: #b5dfd75c;
+}
+.audition.au-world .au-context {
+  padding: 25px 22px;
+}
+.audition.au-world .au-context h2 {
+  font-size: 25px;
+}
+.audition.au-world .au-planning textarea {
+  background: #11212ad9;
+  color: #e9efe3;
+  border-color: #bad9d945;
+}
+.audition.au-world .au-proposal {
+  background: #9abbbb08;
+  padding: 21px 15px 10px;
+}
+.audition.au-world .au-assignments {
+  min-height: 460px;
+}
+.audition.au-world .au-assignment {
+  padding: 22px 0;
+}
+.audition.au-world .au-course-icon {
+  background: var(--event-bg);
+  color: var(--event-ink);
+}
+.world-caption {
+  position: absolute;
+  left: calc(205px + 4%);
+  right: 4%;
+  top: 315px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font:
+    8px/1.6 "Segoe UI",
+    sans-serif;
+  letter-spacing: 2px;
+  color: #deebe4;
+  text-shadow: 0 2px 15px #102c3a;
+  pointer-events: none;
+  z-index: 2;
+}
+.world-caption span:first-child {
+  border-left: 1px solid #c4e6e0;
+  padding-left: 15px;
+}
+.world-caption span:last-child {
+  font:
+    8px "Courier New",
+    monospace;
+  letter-spacing: 1px;
+  background: #0d253877;
+  padding: 7px 10px;
+  border: 1px solid #d7f4ee22;
+}
+.world-diagnostics {
+  position: fixed;
+  right: 22px;
+  bottom: 16px;
+  z-index: 8;
+  width: 330px;
+  border: 1px solid #b7d8d444;
+  background: #10202bed;
+  color: #e2eee8;
+  backdrop-filter: blur(16px);
+  font:
+    10px/1.6 "Segoe UI",
+    sans-serif;
+  box-shadow: 0 10px 30px #06122250;
+}
+.world-diagnostics summary {
+  cursor: pointer;
+  padding: 11px 15px;
+  font-size: 10px;
+  list-style: inside;
+  letter-spacing: 0.3px;
+}
+.world-diagnostics summary > span {
+  float: right;
+  font: 10px monospace;
+  color: #c1e3dc;
+}
+.world-instruments {
+  padding: 0 15px 14px;
+  max-height: 65vh;
+  overflow: auto;
+}
+.world-instruments > p {
+  font-size: 10px;
+  color: #b5cbcd;
+  margin-bottom: 12px;
+}
+.world-instruments dl {
+  margin: 0;
+}
+.world-instruments dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 6px 0;
+  border-top: 1px solid #b7d8d422;
+}
+.world-instruments dt {
+  color: #c0d2d3;
+  font-size: 9px;
+}
+.world-instruments dd {
+  margin: 0;
+  text-align: right;
+  font:
+    9px/1.8 "Courier New",
+    monospace;
+}
+.world-gpu {
+  font:
+    8px/1.5 "Courier New",
+    monospace !important;
+  margin-top: 13px !important;
+  overflow-wrap: anywhere;
+}
+.world-diagnostic-actions {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}
+.world-diagnostic-actions button,
+.world-failure button {
+  border: 1px solid #bedfd15c !important;
+  background: #a2c9c114 !important;
+  padding: 7px 10px;
+  font-size: 9px !important;
+  color: #e8f4e7 !important;
+  border-radius: 2px;
+}
+.world-instruments > small {
+  font-size: 8px;
+  color: #adc0c4;
+  line-height: 1.7;
+}
+.world-instruments p[role="status"] {
+  margin: 0 0 10px;
+  font-size: 10px;
+  color: #d8e5bc;
+}
+.world-failure {
+  position: fixed;
+  top: 75px;
+  right: 25px;
+  width: min(520px, calc(100vw - 40px));
+  margin: 0;
+  background: #122a31ed;
+  border: 1px solid #d2d2ab70;
+  color: #e7e9d9;
+  padding: 15px 20px;
+  font-size: 11px;
+  z-index: 10;
+  max-width: 700px;
+}
+.world-failure p {
+  margin: 6px 0 12px;
+  color: #c3d0c9;
+}
+.world-failure span {
+  display: block;
+  margin-top: 10px;
+  font-size: 10px;
+}
+.world-loading {
+  position: absolute;
+  top: 260px;
+  left: 240px;
+  font-size: 10px;
+  color: #e0ebe7;
+}
+.world-immersive .au-workflows,
+.world-immersive .au-footer {
+  display: none;
+}
+.world-immersive .au-hero {
+  pointer-events: none;
+  min-height: calc(100vh - 70px);
+}
+.world-immersive .world-caption {
+  top: auto;
+  position: fixed;
+  bottom: 70px;
+}
+.world-immersive .au-hero > div:first-child {
+  max-width: 750px;
+}
+.world-immersive .au-hero h1 {
+  font-size: clamp(45px, 5.3vw, 80px);
+  max-width: 750px;
+}
+.world-immersive .au-detail {
+  display: none;
+}
+@media (min-width: 1550px) {
+  .audition.au-world .au-workflows {
+    grid-template-columns: minmax(0, 1fr) 285px;
+    max-width: 1430px;
+  }
+  .audition.au-world .au-hero {
+    min-height: 370px;
+  }
+  .world-caption {
+    top: 370px;
+  }
+  .audition.au-world .au-time-grid {
+    height: 540px;
+  }
+  .audition.au-world .au-times > span {
+    height: 60px;
+  }
+  .audition.au-world .au-days {
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0 59px,
+      var(--line) 59px 60px
+    );
+  }
+}
+@media (max-width: 1100px) {
+  .audition.au-world .au-shell {
+    padding-left: 160px;
+    padding-right: 24px;
+  }
+  .audition.au-world .au-header {
+    width: 140px;
+    padding: 32px 15px;
+  }
+  .audition.au-world .au-brand {
+    font-size: 20px;
+  }
+  .audition.au-world .au-brand svg {
+    display: none;
+  }
+  .audition.au-world .au-nav button {
+    font-size: 10px;
+    gap: 8px;
+  }
+  .audition.au-world .au-workflows {
+    grid-template-columns: minmax(0, 1fr) 220px;
+    gap: 17px;
+  }
+  .world-caption {
+    left: 185px;
+    right: 24px;
+  }
+  .world-mode-bar {
+    gap: 12px;
+  }
+  .world-mode-bar > span {
+    display: none;
+  }
+}
+@media (max-width: 850px) {
+  .audition.au-world .au-shell {
+    padding: 0 18px;
+  }
+  .audition.au-world .au-header {
+    position: relative;
+    width: auto;
+    left: auto;
+    top: 0;
+    bottom: auto;
+    flex-direction: row;
+    gap: 25px;
+    padding: 20px 0;
+    background: none;
+    backdrop-filter: none;
+    border: 0;
+  }
+  .audition.au-world .au-nav {
+    flex-direction: row;
+    width: 100%;
+  }
+  .audition.au-world .au-hero {
+    min-height: 240px;
+    padding: 25px 0 75px;
+  }
+  .audition.au-world .au-hero h1 {
+    font-size: 44px;
+  }
+  .audition.au-world .au-workflows {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .world-caption {
+    top: 385px;
+    left: 18px;
+    right: 18px;
+  }
+  .world-caption span:last-child {
+    font-size: 7px;
+    max-width: 130px;
+  }
+  .audition.au-world .au-time-grid {
+    height: 540px;
+  }
+  .audition.au-world .au-times > span {
+    height: 60px;
+  }
+  .audition.au-world .au-days {
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0 59px,
+      var(--line) 59px 60px
+    );
+  }
+  .world-failure {
+    margin: 0;
+    right: 18px;
+  }
+  .world-mode-bar > a {
+    display: none;
+  }
+  .world-diagnostics {
+    width: min(330px, calc(100vw - 28px));
+    right: 14px;
+  }
+  .world-mode-bar button {
+    font-size: 9px;
+  }
+  .audition.au-world .au-audition-bar {
+    padding: 10px 15px;
+    height: auto;
+    gap: 10px;
+  }
+  .audition.au-world .au-performance {
+    margin-left: 0;
+  }
+  .audition.au-world .au-secondary {
+    display: flex;
+  }
+  .world-immersive .au-hero {
+    min-height: calc(100vh - 200px);
+  }
+  .world-immersive .au-hero h1 {
+    font-size: 46px;
+  }
+  .world-loading {
+    top: 330px;
+    left: 25px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .audition.au-world * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

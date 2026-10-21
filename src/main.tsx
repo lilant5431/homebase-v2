@@ -349,17 +349,18 @@ function App() {
 }
 const Auditions = lazy(() => import("./auditions/Auditions"));
 function Entry() {
-  const [audition, setAudition] = useState(() =>
-    location.hash.startsWith("#auditions"),
-  );
+  const [route, setRoute] = useState(() => location.hash);
   useEffect(() => {
-    const update = () => setAudition(location.hash.startsWith("#auditions"));
+    const update = () => setRoute(location.hash);
     window.addEventListener("hashchange", update);
     return () => window.removeEventListener("hashchange", update);
   }, []);
-  return audition ? (
+  return route.startsWith("#auditions") || route === "#world" ? (
     <Suspense fallback={<p role="status">Opening visual auditions…</p>}>
-      <Auditions />
+      <Auditions
+        key={route === "#world" ? "world" : "auditions"}
+        world={route === "#world"}
+      />
     </Suspense>
   ) : (
     <>
@@ -380,6 +381,23 @@ function Entry() {
         }}
       >
         Explore visual auditions ↗
+      </a>
+      <a
+        href="#world"
+        style={{
+          position: "fixed",
+          bottom: 8,
+          right: 16,
+          zIndex: 20,
+          fontSize: 11,
+          padding: "7px 12px",
+          background: "#17272e",
+          color: "#dfeae7",
+          border: "1px solid #69857b",
+          borderRadius: 4,
+        }}
+      >
+        Enter the living world ↗
       </a>
     </>
   );

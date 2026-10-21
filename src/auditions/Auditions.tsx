@@ -24,6 +24,7 @@ import {
   type Workflow,
 } from "./fixtures";
 import "./auditions.css";
+import WorldStage from "../world/WorldStage";
 
 function Environment({ concept }: { concept: Concept }) {
   return (
@@ -76,9 +77,9 @@ function Environment({ concept }: { concept: Concept }) {
   );
 }
 
-export default function Auditions() {
+export default function Auditions({ world = false }: { world?: boolean }) {
   const [concept, setConcept] = useState<Concept>(() =>
-    parseConcept(location.hash),
+    world ? "meridian" : parseConcept(location.hash),
   );
   const [view, setView] = useState<Workflow>("week");
   const [selected, setSelected] = useState<Assignment>(assignments[0]);
@@ -89,6 +90,7 @@ export default function Auditions() {
   );
   const [quiet, setQuiet] = useState(false);
   const [status, setStatus] = useState("");
+  const [immersive, setImmersive] = useState(false);
   const main = useRef<HTMLElement>(null);
   const detailClose = useRef<HTMLButtonElement>(null);
   const planAction = useRef<HTMLButtonElement>(null);
@@ -116,17 +118,20 @@ export default function Auditions() {
   }, [detail]);
   const identity = concepts[concept];
   useEffect(() => {
-    const sync = () => setConcept(parseConcept(location.hash));
+    const sync = () =>
+      setConcept(world ? "meridian" : parseConcept(location.hash));
     window.addEventListener("hashchange", sync);
     return () => window.removeEventListener("hashchange", sync);
-  }, []);
+  }, [world]);
   useEffect(() => {
     const previous = document.title;
-    document.title = `${identity.name} · Homebase visual auditions`;
+    document.title = world
+      ? "The Observatory · Homebase living world"
+      : `${identity.name} · Homebase visual auditions`;
     return () => {
       document.title = previous;
     };
-  }, [identity.name]);
+  }, [identity.name, world]);
   function selectConcept(next: Concept) {
     location.hash = `auditions/${next}`;
     setConcept(next);
@@ -415,7 +420,9 @@ export default function Auditions() {
     </section>
   );
   return (
-    <div className={`audition au-${concept}${quiet ? " au-quiet" : ""}`}>
+    <div
+      className={`audition au-${concept}${quiet ? " au-quiet" : ""}${world ? " au-world" : ""}${immersive ? " world-immersive" : ""}`}
+    >
       <a
         className="au-skip"
         href="#au-workspace"
@@ -427,30 +434,57 @@ export default function Auditions() {
       >
         Skip to workspace
       </a>
-      <Environment concept={concept} />
+      {world ? (
+        <WorldStage
+          area={view}
+          emphasis={detail || proposal === "preview"}
+          disabled={quiet}
+        />
+      ) : (
+        <Environment concept={concept} />
+      )}
       <div className="au-audition-bar">
         <a href="#" className="au-return">
           <ArrowLeft size={14} /> Back to planner
         </a>
-        <div className="au-selector" role="group" aria-label="Visual concept">
-          {(Object.keys(concepts) as Concept[]).map((key, i) => (
+        {world ? (
+          <div className="world-mode-bar">
+            <a href="#auditions/meridian">← V2.1A auditions</a>
+            <span>V2.1B / REAL-TIME WORLD</span>
             <button
-              key={key}
-              aria-pressed={concept === key}
-              onClick={() => selectConcept(key)}
+              aria-pressed={immersive}
+              onClick={() => setImmersive(!immersive)}
             >
-              <span>0{i + 1}</span>
-              {concepts[key].name}
+              {immersive ? "Show workbench" : "Explore the architecture"}
             </button>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div className="au-selector" role="group" aria-label="Visual concept">
+            {(Object.keys(concepts) as Concept[]).map((key, i) => (
+              <button
+                key={key}
+                aria-pressed={concept === key}
+                onClick={() => selectConcept(key)}
+              >
+                <span>0{i + 1}</span>
+                {concepts[key].name}
+              </button>
+            ))}
+          </div>
+        )}
         <button
           className="au-performance"
           aria-pressed={quiet}
           onClick={() => setQuiet(!quiet)}
         >
           <Layers3 size={14} />
-          {quiet ? "Simple environment" : "Full environment"}
+          {world
+            ? quiet
+              ? "Enable graphics"
+              : "Disable graphics"
+            : quiet
+              ? "Simple environment"
+              : "Full environment"}
         </button>
       </div>
       <div className="au-shell">
@@ -465,7 +499,12 @@ export default function Auditions() {
           >
             <Gem size={27} />
             <span>
-              homebase<small>{identity.name.toUpperCase()} / V2.1A</small>
+              homebase
+              <small>
+                {world
+                  ? "THE OBSERVATORY / V2.1B"
+                  : `${identity.name.toUpperCase()} / V2.1A`}
+              </small>
             </span>
           </a>
           {nav}
@@ -477,11 +516,25 @@ export default function Auditions() {
           <section className="au-hero">
             <div>
               <span className="au-kicker">
-                {identity.subtitle.toUpperCase()}{" "}
+                {world
+                  ? "A LIVING SPACE FOR YOUR MIND"
+                  : identity.subtitle.toUpperCase()}{" "}
                 <span className="au-title-rule" /> FALL SEMESTER 2026
               </span>
-              <h1>{identity.line}</h1>
-              <p>{identity.description}</p>
+              <h1>
+                {world
+                  ? view === "planning"
+                    ? "A little room for possibility."
+                    : view === "assignments"
+                      ? "Ideas, taking shape."
+                      : "A place for your mind."
+                  : identity.line}
+              </h1>
+              <p>
+                {world
+                  ? "Light moves. Ideas settle. Your next chapter comes into focus."
+                  : identity.description}
+              </p>
             </div>
             <div className="au-hero-index">
               <span>
