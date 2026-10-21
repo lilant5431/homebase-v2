@@ -1,0 +1,130 @@
+[
+  {
+    "origin": "environment",
+    "model": "Qwen2.5-1.5B-Instruct-q4f16_1-MLC",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+    "secure": true,
+    "webgpu": true
+  },
+  {
+    "origin": "actual WebLLM load",
+    "modelId": "Qwen2.5-1.5B-Instruct-q4f16_1-MLC",
+    "loadMs": 5218
+  },
+  {
+    "name": "exact session",
+    "request": "Schedule \"History essay\" on 2026-10-20 at 14:00 for 60 minutes.",
+    "origin": "actual WebLLM inference",
+    "result": {
+      "summary": "A new block has been proposed for the History essay on October 20, 2026 at 14:00 lasting exactly 60 minutes.",
+      "blocks": [
+        {
+          "assignmentId": "essay",
+          "start": "2026-10-20T14:00",
+          "end": "2026-10-20T15:00"
+        }
+      ],
+      "latencyMs": 12228,
+      "modelId": "Qwen2.5-1.5B-Instruct-q4f16_1-MLC"
+    },
+    "jsonValidity": true,
+    "domainValidity": true,
+    "instructionCorrectness": true,
+    "domainErrors": [],
+    "intentErrors": [],
+    "approvalAllowed": true
+  },
+  {
+    "name": "90-minute window",
+    "request": "Schedule \"Calculus problem set\" on 2026-10-21 between 13:00 and 17:00 for 90 minutes.",
+    "origin": "actual WebLLM inference",
+    "result": {
+      "summary": "A new block has been proposed for the user's request.",
+      "blocks": [
+        {
+          "assignmentId": "calculus",
+          "start": "2026-10-21T13:00",
+          "end": "2026-10-21T17:00"
+        }
+      ],
+      "latencyMs": 1573,
+      "modelId": "Qwen2.5-1.5B-Instruct-q4f16_1-MLC"
+    },
+    "jsonValidity": true,
+    "domainValidity": false,
+    "instructionCorrectness": false,
+    "domainErrors": [
+      "Calculus problem set: exceeds remaining estimated work."
+    ],
+    "intentErrors": [
+      "Proposal does not match the requested duration."
+    ],
+    "approvalAllowed": false
+  },
+  {
+    "name": "busy requested slot",
+    "request": "Schedule \"History essay\" on 2026-10-20 at 10:00 for 60 minutes.",
+    "origin": "actual WebLLM inference",
+    "result": {
+      "summary": "A new block has been proposed for the History essay on October 20, 2026 at 10:00 with a duration of 60 minutes.",
+      "blocks": [
+        {
+          "assignmentId": "essay",
+          "start": "2026-10-20T10:00",
+          "end": "2026-10-20T11:00"
+        }
+      ],
+      "latencyMs": 2003,
+      "modelId": "Qwen2.5-1.5B-Instruct-q4f16_1-MLC"
+    },
+    "jsonValidity": true,
+    "domainValidity": false,
+    "instructionCorrectness": true,
+    "domainErrors": [
+      "Study time overlaps another event."
+    ],
+    "intentErrors": [],
+    "approvalAllowed": false
+  },
+  {
+    "name": "ambiguous request",
+    "request": "Find time for my homework tomorrow.",
+    "origin": "deterministic clarification, no inference",
+    "jsonValidity": null,
+    "domainValidity": null,
+    "instructionCorrectness": null,
+    "approvalAllowed": false,
+    "error": "Error: Clarification needed. Use: Schedule \"Exact assignment title\" on YYYY-MM-DD at HH:mm for N minutes. Or replace \"at HH:mm\" with \"between HH:mm and HH:mm\". One assignment and one block per request; 24-hour local time. Other instructions need clarification."
+  },
+  {
+    "name": "unsupported extra instruction",
+    "request": "Schedule \"History essay\" on 2026-10-20 at 14:00 for 60 minutes. Move my class if needed.",
+    "origin": "deterministic clarification, no inference",
+    "jsonValidity": null,
+    "domainValidity": null,
+    "instructionCorrectness": null,
+    "approvalAllowed": false,
+    "error": "Error: Clarification needed. Use: Schedule \"Exact assignment title\" on YYYY-MM-DD at HH:mm for N minutes. Or replace \"at HH:mm\" with \"between HH:mm and HH:mm\". One assignment and one block per request; 24-hour local time. Other instructions need clarification."
+  },
+  {
+    "origin": "deterministic mismatched-intent fixture, NOT inference",
+    "request": "Schedule \"Calculus problem set\" on 2026-10-21 between 13:00 and 17:00 for 90 minutes.",
+    "result": {
+      "summary": "Deterministic replay of the old 60 vs 90 minute failure; NOT live inference.",
+      "blocks": [
+        {
+          "assignmentId": "calculus",
+          "start": "2026-10-21T14:30",
+          "end": "2026-10-21T15:30"
+        }
+      ]
+    },
+    "jsonValidity": true,
+    "domainValidity": true,
+    "instructionCorrectness": false,
+    "approvalAllowed": false,
+    "intentErrors": [
+      "Proposal does not match the requested duration."
+    ]
+  }
+]

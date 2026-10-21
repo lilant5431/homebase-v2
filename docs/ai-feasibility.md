@@ -1,12 +1,20 @@
 # Browser-local AI feasibility
 
+## Stabilization — October 20, 2026
+
+The model is unchanged. A fully anchored request grammar now yields one assignment, date, exact start or window, and duration. Unsupported or ambiguous text asks for clarification before inference. The worker receives those constraints; approval independently checks them plus the shared calendar validator. This deliberately does not support arbitrary scheduling language.
+
+Fresh actual WebLLM sample (Windows Chrome 155): model load **5,218 ms** with cache state unknown. Exact session: **12,228 ms**, JSON/domain/explicit instruction checks pass. 90-minute window: **1,573 ms**, JSON valid but a 240-minute answer fails both workload and duration checks. Busy requested slot: **2,003 ms**, JSON and literal time/duration match, but domain conflict blocks approval. Thus **3/3 JSON valid, 1/3 domain-valid, 2/3 literal instruction-correct, 1/3 approvable**. Literal instruction correctness here measures assignment/day/window/duration; busy-time safety is reported separately under domain validity. This is a small sample, not an accuracy improvement claim.
+
+Two additional requests (ambiguous and an unsupported extra instruction) were rejected before inference. A **deterministic fixture**, not live inference, replayed the old domain-valid 60-minute response to a 90-minute request and was blocked by intent validation. [Raw labeled results](../scripts/ai-stabilization-results.json) distinguish actual inference, clarification, and fixtures. The evaluator page now reproduces these cases and reports JSON validity, domain validity, instruction correctness and approval eligibility separately. Original observations below are historical and used the earlier prompt; mobile/physical iPhone inference remains untested.
+
 The prototype uses `@mlc-ai/web-llm` 0.2.83 and `Qwen2.5-1.5B-Instruct-q4f16_1-MLC` (approximately 1.5 billion parameters, 4-bit weights). Inference runs in `src/ai.worker.ts`; no cloud completion API or mock completion path exists. First use downloads public model artifacts, so first-run setup is not offline.
 
 The [model repository](https://huggingface.co/mlc-ai/Qwen2.5-1.5B-Instruct-q4f16_1-MLC/tree/main) lists 880 MB of files; runtime Wasm/cache overhead is additional. Installed WebLLM configuration estimates 1629.75 MB VRAM. The prototype checks `shader-f16` before loading its selected f16 variant. The [worker API](https://webllm.mlc.ai/docs/user/advanced_usage.html) keeps inference work separate from the interface.
 
 ## Reproduce
 
-Run `npm ci`, `npx vite --config scripts/ai-eval.config.ts`, and open `http://localhost:5176/scripts/ai-eval.html` in a WebGPU browser. The isolated server disables hot reload to protect measurements while source files change. Click **Load model & run 3 scheduling requests**. The page reports raw model output, elapsed wall-clock generation time, shape validity, date validity, and conflicts with fixture busy time. This is a small feasibility sample, not an accuracy benchmark.
+Run `npm ci`, `npx vite --config scripts/ai-eval.config.ts`, and open `http://localhost:5176/scripts/ai-eval.html` in a WebGPU browser. The isolated server disables hot reload to protect measurements while source files change. Click **Run stabilized scheduling evaluation**. The page reports raw model output and separate validity/intent checks. This is a small feasibility sample, not an accuracy benchmark.
 
 Fixture: history essay due October 23 (120 minutes), calculus set due October 22 (90 minutes), and an existing Tuesday October 20 10:00–11:00 block. Requests exercise explicit time/duration, time range/deadline, and conflict avoidance. No test output is written into the planner.
 

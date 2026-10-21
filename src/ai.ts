@@ -1,3 +1,4 @@
+import { parseIntent } from "./planningIntent";
 import type { MLCEngineInterface } from "@mlc-ai/web-llm";
 
 export const MODEL_ID = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
@@ -37,6 +38,7 @@ let loading: Promise<{ modelId: string; loadMs: number }> | undefined;
 let status = "Model not loaded";
 let generation = 0;
 let busy = false;
+let rejectCurrent: ((reason: Error) => void) | undefined;
 export function getAIStatus() {
   return {
     loaded: !!engine,
@@ -106,7 +108,8 @@ export async function loadModel(onProgress: (text: string) => void = () => {}) {
 /** Cancellation invalidates the result, even if GPU work finishes before interruption. */
 export function cancelInference() {
   generation++;
-  engine?.interruptGenerate();
+  if (busy) engine?.interruptGenerate();
+  rejectCurrent?.(new Error("Planning canceled."));
   status = "Canceled";
 }
 
@@ -129,6 +132,7 @@ export async function propose(
     throw new Error(
       "For this small model, use at most 20 assignments, 60 blocks, and a request under 1,500 characters.",
     );
+  const intent = parseIntent(request, state.assignments);
   const token = ++generation;
   const schema = {
     type: "object",
@@ -165,22 +169,31 @@ export async function propose(
   status = "Planning on your device";
   const start = performance.now();
   try {
-    const result = await engine.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content:
-            "You propose academic study blocks. Return JSON only, with summary and blocks. Every block has assignmentId, start, end. Use exact assignment IDs and local ISO timestamps YYYY-MM-DDTHH:mm. Respect deadlines, existing busy blocks, and the user request. Add only new blocks; do not move existing blocks. Use 30-120 minute sessions between 08:00 and 21:00. If no valid plan exists return an empty blocks array and explain why. The output is only a proposal awaiting deterministic validation and human approval.",
-        },
-        {
-          role: "user",
-          content: `Assignments: ${JSON.stringify(state.assignments)}\nAlready occupied times (NEVER copy these into the proposal): ${JSON.stringify(state.blocks)}\nWeek starts: ${state.weekStart || "use dates from request"}\nUSER REQUEST: ${request}\nReturn only new study blocks satisfying this request. Calculate the end time from the requested duration.`,
-        },
-      ],
-      temperature: 0,
-      max_tokens: 700,
-      response_format: { type: "json_object", schema: JSON.stringify(schema) },
+    const canceled = new Promise<never>((_, reject) => {
+      rejectCurrent = reject;
     });
+    const result = await Promise.race([
+      canceled,
+      engine.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content:
+              "You propose academic study blocks. Return JSON only, with summary and blocks. Every block has assignmentId, start, end. Use exact assignment IDs and local ISO timestamps YYYY-MM-DDTHH:mm. Respect deadlines, existing busy blocks, and the user request. Add only new blocks; do not move existing blocks. Use exactly one block with the structured intent assignment ID, date, allowed window, and exact duration. Never copy an occupied block. Do not add other assignments. If no valid plan exists return an empty blocks array and explain why. The output is only a proposal awaiting deterministic validation and human approval.",
+          },
+          {
+            role: "user",
+            content: `Verified scheduling intent: ${JSON.stringify(intent)}\nAssignments: ${JSON.stringify(state.assignments)}\nAlready occupied times (NEVER copy these into the proposal): ${JSON.stringify(state.blocks)}\nWeek starts: ${state.weekStart || "use dates from request"}\nUSER REQUEST: ${request}\nReturn only new study blocks satisfying this request. Calculate the end time from the requested duration.`,
+          },
+        ],
+        temperature: 0,
+        max_tokens: 700,
+        response_format: {
+          type: "json_object",
+          schema: JSON.stringify(schema),
+        },
+      }),
+    ]);
     if (token !== generation) throw new Error("Planning canceled.");
     if (result.choices[0]?.finish_reason === "length")
       throw new AIOutputError(
@@ -188,9 +201,16 @@ export async function propose(
         result.choices[0]?.message.content || "",
         Math.round(performance.now() - start),
       );
-    const parsed: unknown = JSON.parse(
-      result.choices[0]?.message.content || "",
-    );
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(result.choices[0]?.message.content || "");
+    } catch {
+      throw new AIOutputError(
+        "The local model returned incomplete JSON. Try the request again; no changes were saved.",
+        result.choices[0]?.message.content || "",
+        Math.round(performance.now() - start),
+      );
+    }
     if (!parsed || typeof parsed !== "object")
       throw new Error("The model returned an invalid proposal.");
     const proposal = parsed as { summary?: unknown; blocks?: unknown };
@@ -218,6 +238,12 @@ export async function propose(
     status = error instanceof Error ? error.message : String(error);
     throw error;
   } finally {
+    if (token !== generation) {
+      worker?.terminate();
+      worker = undefined;
+      engine = undefined;
+    }
+    rejectCurrent = undefined;
     busy = false;
   }
 }

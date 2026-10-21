@@ -1,4 +1,12 @@
-# Prototype verification — October 19, 2026
+# Stabilization verification — October 20, 2026
+
+- `npm test`: **43 passing tests** across domain operations, malformed/conflicting imports, save/restore/undo, recovery/quota failure, stale writes, serialized size limits, zone-independent wall times, strict intent, approval gates, and worker cancellation. Worker lifecycle tests use an explicitly mocked engine; they are not inference measurements.
+- Fresh **actual WebLLM** evaluation: 3/3 JSON valid, 1/3 domain-valid, 2/3 literal instruction-correct, 1/3 approvable. Unsupported/ambiguous requests are rejected before inference; the old domain-valid 60/90-minute mismatch is blocked in a separately labeled deterministic fixture. [Raw evidence](../scripts/ai-stabilization-results.json).
+- Actual browser (isolated test origin): assignment creation/edit/completion/reopen, linked manual scheduling, reload persistence, study conflicts, individually editable overlapping commitments, rejected malformed restore without data loss, export/restore/undo, and stale-tab rejection checked. Desktop and 390×844 responsive layout checked; physical iPhone inference remains untested.
+- Independent review identified and resolved proposal scratch-ID collisions, reusable-store stale candidates, timezone-dependent loading, completed-history relinking, overlap rendering, and serialized 5 MB growth. No V1 changes, merge or deployment.
+- Limit: dates remain floating wall-clock values, not timezone-aware instants; DST values are nominal. Web Locks protect cooperating tabs, with snapshot/revision fallback. Local storage is still not a transactional database. AI supports only the documented explicit grammar, not arbitrary language.
+
+## Initial prototype verification — October 19, 2026 (historical)
 
 - `npm test`: 6 deterministic domain tests passed. Covers non-mutation, valid additions, existing and intra-proposal conflicts, completed/unknown assignments, work limits, invalid dates, schema rejection, backup roundtrip, and revision increment.
 - `npm run build`: TypeScript and production Vite build passed. Expected warning: lazy WebLLM runtime/worker chunks are large (about 6 MB each uncompressed); model weights are downloaded separately on explicit enable.

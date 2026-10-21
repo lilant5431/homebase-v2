@@ -33,84 +33,155 @@
     result. Loading downloads model files from Hugging Face and the MLC runtime
     from GitHub.
   </p>
-  <button id="run">Load model & run 3 scheduling requests</button>
-  <button id="cancel">Cancel generation</button>
-  <pre id="results">Ready to test.</pre>
+  <button id="run">Run stabilized scheduling evaluation</button>
+  <button id="cancel">Cancel evaluation</button>
+  <pre id="results">
+Ready to test. Fixtures and inference are labeled separately.</pre>
   <script type="module">
     import { loadModel, propose, cancelInference, MODEL_ID } from "/src/ai.ts";
+    import { evaluationState } from "/src/testFixtures.ts";
+    import { validateProposal } from "/src/domain.ts";
+    import { parseIntent, validateIntent } from "/src/planningIntent.ts";
     const out = document.querySelector("#results");
-    const log = (line) =>
-      (out.textContent +=
-        "\n" +
-        (typeof line === "string" ? line : JSON.stringify(line, null, 2)));
-    document.querySelector("#cancel").onclick = () => cancelInference();
-    const state = {
-      weekStart: "2026-10-19",
-      assignments: [
-        {
-          id: "essay",
-          title: "History essay",
-          dueDate: "2026-10-23",
-          estimatedMinutes: 120,
-        },
-        {
-          id: "calculus",
-          title: "Calculus problem set",
-          dueDate: "2026-10-22",
-          estimatedMinutes: 90,
-        },
-      ],
-      blocks: [{ start: "2026-10-20T10:00", end: "2026-10-20T11:00" }],
+    const state = evaluationState();
+    let canceled = false;
+    const records = [];
+    const log = (record) => {
+      records.push(record);
+      out.textContent = JSON.stringify(records, null, 2);
     };
-    const requests = [
-      "Schedule one 60-minute study block for my history essay on Tuesday October 20 at 14:00.",
-      "Schedule 90 minutes for my calculus problem set on Wednesday October 21, after 13:00 and before 17:00.",
-      "Schedule the history essay on Tuesday October 20 at 10:00. If this conflicts with an existing block, propose the next available hour that morning.",
+    const cases = [
+      {
+        name: "exact session",
+        request:
+          'Schedule "History essay" on 2026-10-20 at 14:00 for 60 minutes.',
+      },
+      {
+        name: "90-minute window",
+        request:
+          'Schedule "Calculus problem set" on 2026-10-21 between 13:00 and 17:00 for 90 minutes.',
+      },
+      {
+        name: "busy requested slot",
+        request:
+          'Schedule "History essay" on 2026-10-20 at 10:00 for 60 minutes.',
+      },
+      {
+        name: "ambiguous request",
+        request: "Find time for my homework tomorrow.",
+      },
+      {
+        name: "unsupported extra instruction",
+        request:
+          'Schedule "History essay" on 2026-10-20 at 14:00 for 60 minutes. Move my class if needed.',
+      },
     ];
+    document.querySelector("#cancel").onclick = () => {
+      canceled = true;
+      cancelInference();
+    };
     document.querySelector("#run").onclick = async () => {
+      records.length = 0;
+      canceled = false;
       document.querySelector("#run").disabled = true;
-      out.textContent = JSON.stringify(
-        {
-          model: MODEL_ID,
-          userAgent: navigator.userAgent,
-          secure: window.isSecureContext,
-          webgpu: !!navigator.gpu,
-        },
-        null,
-        2,
-      );
+      log({
+        origin: "environment",
+        model: MODEL_ID,
+        userAgent: navigator.userAgent,
+        secure: window.isSecureContext,
+        webgpu: !!navigator.gpu,
+      });
       try {
         const loaded = await loadModel((text) => {
           document.title = text;
         });
-        log(loaded);
-        for (const request of requests) {
-          const started = performance.now();
+        log({ origin: "actual WebLLM load", ...loaded });
+        for (const item of cases) {
+          if (canceled) {
+            log({ origin: "control", canceled: true });
+            break;
+          }
+          let intent;
           try {
-            const result = await propose(state, request);
-            const validDates = result.blocks.every(
-              (b) =>
-                Number.isFinite(Date.parse(b.start)) &&
-                Date.parse(b.end) > Date.parse(b.start),
-            );
-            const noConflicts = result.blocks.every((b) =>
-              state.blocks.every((e) => !(b.start < e.end && b.end > e.start)),
-            );
-            log({ request, result, shapeValid: true, validDates, noConflicts });
+            intent = parseIntent(item.request, state.assignments);
           } catch (error) {
             log({
-              request,
+              ...item,
+              origin: "deterministic clarification, no inference",
+              jsonValidity: null,
+              domainValidity: null,
+              instructionCorrectness: null,
+              approvalAllowed: false,
+              error: String(error),
+            });
+            continue;
+          }
+          const start = performance.now();
+          try {
+            const result = await propose(
+              { ...state, weekStart: "2026-10-19" },
+              item.request,
+            );
+            const domainErrors = validateProposal(state, result),
+              intentErrors = validateIntent(intent, result);
+            log({
+              ...item,
+              origin: "actual WebLLM inference",
+              result,
+              jsonValidity: true,
+              domainValidity: !domainErrors.length,
+              instructionCorrectness: !intentErrors.length,
+              domainErrors,
+              intentErrors,
+              approvalAllowed: !domainErrors.length && !intentErrors.length,
+            });
+          } catch (error) {
+            log({
+              ...item,
+              origin: "actual WebLLM inference attempt",
               error: String(error),
               rawOutput: error.rawOutput,
-              elapsedMs: Math.round(performance.now() - started),
+              elapsedMs: Math.round(performance.now() - start),
+              jsonValidity: false,
+              domainValidity: null,
+              instructionCorrectness: null,
+              approvalAllowed: false,
             });
           }
         }
+        const request = cases[1].request;
+        const fixture = {
+          summary:
+            "Deterministic replay of the old 60 vs 90 minute failure; NOT live inference.",
+          blocks: [
+            {
+              assignmentId: "calculus",
+              start: "2026-10-21T14:30",
+              end: "2026-10-21T15:30",
+            },
+          ],
+        };
+        const domainErrors = validateProposal(state, fixture),
+          intentErrors = validateIntent(
+            parseIntent(request, state.assignments),
+            fixture,
+          );
+        log({
+          origin: "deterministic mismatched-intent fixture, NOT inference",
+          request,
+          result: fixture,
+          jsonValidity: true,
+          domainValidity: !domainErrors.length,
+          instructionCorrectness: !intentErrors.length,
+          approvalAllowed: !domainErrors.length && !intentErrors.length,
+          intentErrors,
+        });
       } catch (error) {
-        log({ blocker: String(error) });
+        log({ origin: "blocker", error: String(error) });
+      } finally {
+        document.querySelector("#run").disabled = false;
+        document.title = "Evaluation complete";
       }
-      document.querySelector("#run").disabled = false;
-      document.title = "Evaluation complete";
     };
   </script>
 </html>

@@ -129,112 +129,167 @@ export function seed(): State {
     ],
   };
 }
-const validDate = (s: unknown): s is string => {
+// Schema v2 stores floating wall-clock values, not instants or a device zone.
+// Gregorian validation and duration arithmetic must not change when travelling.
+export function validDate(s: unknown): s is string {
   if (typeof s !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s))
     return false;
-  const d = new Date(s);
-  return (
-    Number.isFinite(+d) &&
-    `${localISO(d)}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}` ===
-      s
-  );
-};
-export function validateProposal(state: State, proposal: Proposal): string[] {
+  const d = new Date(s + "Z");
+  return Number.isFinite(+d) && d.toISOString().slice(0, 16) === s;
+}
+export const minutesBetween = (start: string, end: string) =>
+  (+new Date(end + "Z") - +new Date(start + "Z")) / 60000;
+export const floatingDate = (value: string) => new Date(value + "Z");
+const object = (v: unknown): v is Record<string, unknown> =>
+  !!v && typeof v === "object" && !Array.isArray(v);
+const text = (v: unknown, max: number): v is string =>
+  typeof v === "string" && !!v.trim() && v.length <= max;
+const colors = ["lilac", "mint", "peach", "blue"];
+
+/** One rule set for whole calendars (including imported history). Completed
+ * assignments may retain existing sessions; operations forbid new/changed ones. */
+export function validateState(value: unknown): string[] {
+  if (
+    !object(value) ||
+    value.schemaVersion !== 2 ||
+    !Number.isSafeInteger(value.revision) ||
+    (value.revision as number) < 0 ||
+    !Array.isArray(value.assignments) ||
+    !Array.isArray(value.blocks) ||
+    value.assignments.length > 1000 ||
+    value.blocks.length > 5000
+  )
+    return ["Unsupported or invalid backup. Expected schema version 2."];
   const errors: string[] = [];
+  const assignments = new Map<string, Assignment>();
+  const ids = new Set<string>();
+  for (const a of value.assignments) {
+    if (
+      !object(a) ||
+      !text(a.id, 200) ||
+      assignments.has(a.id) ||
+      !text(a.title, 120) ||
+      !text(a.course, 40) ||
+      !validDate(a.dueDate) ||
+      !Number.isInteger(a.estimatedMinutes) ||
+      (a.estimatedMinutes as number) < 15 ||
+      (a.estimatedMinutes as number) > 10080 ||
+      typeof a.completed !== "boolean" ||
+      !colors.includes(a.color as string)
+    ) {
+      errors.push("Invalid assignment in backup.");
+      continue;
+    }
+    assignments.set(a.id, a as unknown as Assignment);
+  }
+  const blocks: Block[] = [];
+  for (const b of value.blocks) {
+    if (
+      !object(b) ||
+      !text(b.id, 200) ||
+      ids.has(b.id) ||
+      !text(b.title, 120) ||
+      !validDate(b.start) ||
+      !validDate(b.end) ||
+      b.end <= b.start ||
+      b.start.slice(0, 10) !== b.end.slice(0, 10) ||
+      !colors.includes(b.color as string) ||
+      (b.assignmentId !== undefined &&
+        (!text(b.assignmentId, 200) || !assignments.has(b.assignmentId)))
+    ) {
+      errors.push(
+        "Invalid calendar event: check IDs, dates, title and assignment.",
+      );
+      continue;
+    }
+    ids.add(b.id);
+    blocks.push(b as unknown as Block);
+  }
+  const totals = new Map<string, number>();
+  for (const b of blocks) {
+    if (!b.assignmentId) continue;
+    const a = assignments.get(b.assignmentId)!;
+    const minutes = minutesBetween(b.start, b.end);
+    if (minutes < 15 || minutes > 240)
+      errors.push(
+        `${a.title}: study blocks must be 15�240 minutes on one day.`,
+      );
+    if (b.end > a.dueDate)
+      errors.push(`${a.title}: block ends after its deadline.`);
+    totals.set(a.id, (totals.get(a.id) || 0) + minutes);
+  }
+  // Commitments may overlap each other (e.g. a lecture and an all-day reminder).
+  // A linked focus session must be free of every other event, including history.
+  const sorted = blocks.slice().sort((a, b) => a.start.localeCompare(b.start));
+  for (let i = 0; i < sorted.length; i++)
+    for (
+      let j = i + 1;
+      j < sorted.length && sorted[j].start < sorted[i].end;
+      j++
+    ) {
+      if (sorted[i].assignmentId || sorted[j].assignmentId)
+        errors.push("Study time overlaps another event.");
+    }
+  for (const [id, total] of totals)
+    if (total > assignments.get(id)!.estimatedMinutes)
+      errors.push(
+        `${assignments.get(id)!.title}: exceeds remaining estimated work.`,
+      );
+  return [...new Set(errors)];
+}
+export function assertState(value: unknown): asserts value is State {
+  const errors = validateState(value);
+  if (errors.length) throw Error(errors.join(" "));
+}
+export function parseState(raw: string): State {
+  if (raw.length > 5_000_000) throw Error("Backup is too large (5 MB limit).");
+  const value: unknown = JSON.parse(raw);
+  assertState(value);
+  return value;
+}
+export function validateProposal(state: State, proposal: Proposal): string[] {
   if (
     !proposal ||
+    typeof proposal.summary !== "string" ||
     !Array.isArray(proposal.blocks) ||
     !proposal.blocks.length ||
     proposal.blocks.length > 40
   )
-    return ["A proposal must contain 1–40 study blocks."];
-  const accepted: Block[] = [...state.blocks];
-  const totals: Record<string, number> = {};
-  for (const b of proposal.blocks) {
+    return ["A proposal must contain 1�40 study blocks."];
+  const errors: string[] = [];
+  const blocks: Block[] = [];
+  const ids = new Set(state.blocks.map((b) => b.id));
+  for (const [i, b] of proposal.blocks.entries()) {
+    if (!object(b)) {
+      errors.push("Invalid proposed block.");
+      continue;
+    }
     const a = state.assignments.find((a) => a.id === b.assignmentId);
     if (!a || a.completed) {
       errors.push("Assignment is missing or completed.");
       continue;
     }
-    if (!validDate(b.start) || !validDate(b.end) || b.end <= b.start) {
-      errors.push("Every block needs a valid start and end.");
-      continue;
-    }
-    const minutes = (+new Date(b.end) - +new Date(b.start)) / 60000;
-    if (
-      minutes < 15 ||
-      minutes > 240 ||
-      b.start.slice(0, 10) !== b.end.slice(0, 10)
-    )
-      errors.push("Study blocks must be 15–240 minutes on one day.");
-    if (b.end > a.dueDate)
-      errors.push(`${a.title}: block ends after its deadline.`);
-    if (accepted.some((x) => b.start < x.end && b.end > x.start))
-      errors.push(`${a.title}: time overlaps another event.`);
-    totals[a.id] = (totals[a.id] || 0) + minutes;
-    accepted.push({ ...b, id: "preview", title: a.title, color: a.color });
+    let id = `proposal-${i}`;
+    while (ids.has(id)) id += "-";
+    ids.add(id);
+    blocks.push({
+      id,
+      assignmentId: a.id,
+      title: a.title,
+      color: a.color,
+      start: b.start,
+      end: b.end,
+    });
   }
-  for (const [id, minutes] of Object.entries(totals)) {
-    const a = state.assignments.find((a) => a.id === id)!;
-    const existing = state.blocks
-      .filter((b) => b.assignmentId === id)
-      .reduce((n, b) => n + (+new Date(b.end) - +new Date(b.start)) / 60000, 0);
-    if (minutes + existing > a.estimatedMinutes)
-      errors.push(`${a.title}: exceeds remaining estimated work.`);
-  }
-  return [...new Set(errors)];
+  return [
+    ...new Set([
+      ...errors,
+      ...validateState({ ...state, blocks: [...state.blocks, ...blocks] }),
+    ]),
+  ];
 }
-export function parseState(raw: string): State {
-  const s = JSON.parse(raw);
-  if (
-    s.schemaVersion !== 2 ||
-    !Number.isInteger(s.revision) ||
-    s.revision < 0 ||
-    !Array.isArray(s.assignments) ||
-    !Array.isArray(s.blocks) ||
-    s.assignments.length > 1000 ||
-    s.blocks.length > 5000
-  )
-    throw Error("Unsupported or invalid backup. Expected schema version 2.");
-  const colors = ["lilac", "mint", "peach", "blue"];
-  const ids = new Set();
-  for (const a of s.assignments) {
-    if (
-      !a ||
-      typeof a.id !== "string" ||
-      ids.has(a.id) ||
-      typeof a.title !== "string" ||
-      !a.title.trim() ||
-      typeof a.course !== "string" ||
-      !validDate(a.dueDate) ||
-      !Number.isInteger(a.estimatedMinutes) ||
-      a.estimatedMinutes < 15 ||
-      a.estimatedMinutes > 10080 ||
-      typeof a.completed !== "boolean" ||
-      !colors.includes(a.color)
-    )
-      throw Error("Invalid assignment in backup.");
-    ids.add(a.id);
-  }
-  const blockIds = new Set();
-  for (const b of s.blocks) {
-    if (
-      !b ||
-      typeof b.id !== "string" ||
-      blockIds.has(b.id) ||
-      typeof b.title !== "string" ||
-      !validDate(b.start) ||
-      !validDate(b.end) ||
-      b.end <= b.start ||
-      b.start.slice(0, 10) !== b.end.slice(0, 10) ||
-      !colors.includes(b.color) ||
-      (b.assignmentId && !ids.has(b.assignmentId))
-    )
-      throw Error("Invalid calendar event in backup.");
-    blockIds.add(b.id);
-  }
-  return s;
-}
-export function commit(current: State, next: State) {
-  return { ...next, revision: current.revision + 1 } as State;
+export function commit(current: State, next: State): State {
+  const updated = { ...next, revision: current.revision + 1 };
+  assertState(updated);
+  return updated;
 }
