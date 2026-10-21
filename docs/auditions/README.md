@@ -13,8 +13,9 @@ the disposable demo. No audition action reads/writes academic storage or runs AI
 | Prism | Angular optical field, instrument typography, reversed workbench composition | Large decorative SVG/filter area; strongest visual presence around content |
 
 All use semantic HTML, a single shared fixture set, CSS and one inline SVG.
-There are no new dependencies, WebGL contexts, render loops, external assets or
-font downloads. The lazy audition chunk is ~17 KB JS / ~28 KB CSS before gzip.
+There are no new dependencies, WebGL contexts, render loops or external assets.
+Audition typography uses system fonts; the unchanged planner stylesheet still
+requests its existing Google fonts. The lazy audition chunk is ~17 KB JS / ~28 KB CSS before gzip.
 “Simple environment” removes facets, architecture, grain, transitions and motion.
 Unsupported decorative effects leave the HTML workbench usable; there is no
 advanced renderer whose initialization can block it. Reduced motion disables all
