@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   CalendarDays,
@@ -347,8 +347,45 @@ function App() {
     </div>
   );
 }
+const Auditions = lazy(() => import("./auditions/Auditions"));
+function Entry() {
+  const [audition, setAudition] = useState(() =>
+    location.hash.startsWith("#auditions"),
+  );
+  useEffect(() => {
+    const update = () => setAudition(location.hash.startsWith("#auditions"));
+    window.addEventListener("hashchange", update);
+    return () => window.removeEventListener("hashchange", update);
+  }, []);
+  return audition ? (
+    <Suspense fallback={<p role="status">Opening visual auditions…</p>}>
+      <Auditions />
+    </Suspense>
+  ) : (
+    <>
+      <App />
+      <a
+        href="#auditions/aether"
+        style={{
+          position: "fixed",
+          bottom: 8,
+          left: 16,
+          zIndex: 20,
+          fontSize: 11,
+          padding: "7px 12px",
+          background: "#17272e",
+          color: "#dfeae7",
+          border: "1px solid #69857b",
+          borderRadius: 4,
+        }}
+      >
+        Explore visual auditions ↗
+      </a>
+    </>
+  );
+}
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
+    <Entry />
   </React.StrictMode>,
 );
