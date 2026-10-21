@@ -1,4 +1,21 @@
-import { commit, KEY, parseState, seed, type State } from "./domain";
+import {
+  commit,
+  KEY,
+  parseState,
+  seed,
+  serializeState,
+  type State,
+} from "./domain";
+
+export const READ_ONLY_MESSAGE =
+  "Read-only workspace: this browser cannot coordinate safe saves across tabs. Use HTTPS or localhost in a browser with Web Locks to save. Export and recovery downloads remain available.";
+export async function withWorkspaceWriteLock<T>(
+  locks: Pick<LockManager, "request"> | undefined,
+  operation: () => T,
+): Promise<T> {
+  if (typeof locks?.request !== "function") throw Error(READ_ONLY_MESSAGE);
+  return locks.request(KEY, operation);
+}
 
 export type StoragePort = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 export type Snapshot = { state: State; raw: string | null; error: string };
@@ -30,11 +47,7 @@ export class WorkspaceStore {
         "This workspace changed in another tab or operation. Reload before saving.",
       );
     const updated = commit(this.snapshot.state, next);
-    const raw = JSON.stringify(updated);
-    if (raw.length > 5_000_000)
-      throw Error(
-        "Workspace exceeds the 5 MB backup limit. Export and reduce it before saving.",
-      );
+    const raw = serializeState(updated);
     const original = this.snapshot.raw;
     if (original !== null) {
       let readable = true;
@@ -55,7 +68,7 @@ export class WorkspaceStore {
     const oldRollback = this.storage.getItem(KEY + ".rollback");
     this.storage.setItem(
       KEY + ".rollback",
-      JSON.stringify(this.snapshot.state),
+      serializeState(this.snapshot.state),
     );
     try {
       this.storage.setItem(KEY, raw);

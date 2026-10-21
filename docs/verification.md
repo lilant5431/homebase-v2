@@ -1,4 +1,13 @@
-# Stabilization verification — October 20, 2026
+# P2 reliability corrections — October 20, 2026
+
+- Confirmed the three failures at `6f9cfd4` before editing: no-lock check/write interleaving lost an acknowledged update; a valid 4,999,961-byte Unicode backup grew to 5,000,170 bytes after pretty export and failed the file-size guard; a worker-script error left initialization pending.
+- Corrected no-lock behavior to read-only before any mutation, with a persistent UI explanation and export/recovery access. A deterministic interleaving test verifies neither tab reaches the unsafe write position; a queued-lock test verifies one accepted update and rejection of the stale candidate.
+- Save/export/import now share compact JSON and the inclusive 5,000,000 UTF-8 byte cap. Tests exercise the actual UI Blob export/file reader plus store restore for near-limit Unicode, exact-limit and oversized cases; rejected writes preserve primary, rollback and recovery data.
+- Injected worker `error` and `messageerror` events now reject loading, remove startup listeners, terminate the worker, clear loading/engine state, and allow retry. Late initialization results/progress cannot overwrite the retry. These are deterministic engine fixtures, not new inference results.
+- Focused reliability/lifecycle tests pass (10 tests). One initial test assumed assignment array order after editing; it was corrected to assert by ID. No production code change was needed for that assertion failure. Existing inference evidence remains historical below.
+- Final full checks: **50 tests pass**, TypeScript/production build pass, dependency audit reports **zero vulnerabilities**. Expected lazy WebLLM chunk-size warning remains. Fresh independent review found no actionable defects in the corrections. No inference or broad browser suite was rerun; Blob/file tests call the same functions as the UI. Local storage quota can still reject a valid workspace without replacing current data; the byte cap is not a capacity guarantee.
+
+## Stabilization verification — October 20, 2026 (historical)
 
 - `npm test`: **43 passing tests** across domain operations, malformed/conflicting imports, save/restore/undo, recovery/quota failure, stale writes, serialized size limits, zone-independent wall times, strict intent, approval gates, and worker cancellation. Worker lifecycle tests use an explicitly mocked engine; they are not inference measurements.
 - Fresh **actual WebLLM** evaluation: 3/3 JSON valid, 1/3 domain-valid, 2/3 literal instruction-correct, 1/3 approvable. Unsupported/ambiguous requests are rejected before inference; the old domain-valid 60/90-minute mismatch is blocked in a separately labeled deterministic fixture. [Raw evidence](../scripts/ai-stabilization-results.json).

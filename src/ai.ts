@@ -82,12 +82,48 @@ export async function loadModel(onProgress: (text: string) => void = () => {}) {
     worker = new Worker(new URL("./ai.worker.ts", import.meta.url), {
       type: "module",
     });
-    engine = await CreateWebWorkerMLCEngine(worker, MODEL_ID, {
-      initProgressCallback: (report) => {
-        status = report.text;
-        onProgress(report.text);
-      },
+    const candidate = worker;
+    let acceptingProgress = true;
+    let rejectStartup!: (error: Error) => void;
+    const startupFailure = new Promise<never>((_, reject) => {
+      rejectStartup = reject;
     });
+    const onError = (event: Event) => {
+      event.preventDefault();
+      const detail =
+        "message" in event && typeof event.message === "string"
+          ? ` ${event.message}`
+          : "";
+      rejectStartup(
+        new Error(
+          `Local AI worker failed to initialize.${detail} Try enabling AI again.`,
+        ),
+      );
+    };
+    const onMessageError = () =>
+      rejectStartup(
+        new Error(
+          "Local AI worker could not read an initialization message. Try enabling AI again.",
+        ),
+      );
+    candidate.addEventListener("error", onError);
+    candidate.addEventListener("messageerror", onMessageError);
+    try {
+      engine = await Promise.race([
+        startupFailure,
+        CreateWebWorkerMLCEngine(candidate, MODEL_ID, {
+          initProgressCallback: (report) => {
+            if (!acceptingProgress) return;
+            status = report.text;
+            onProgress(report.text);
+          },
+        }),
+      ]);
+    } finally {
+      acceptingProgress = false;
+      candidate.removeEventListener("error", onError);
+      candidate.removeEventListener("messageerror", onMessageError);
+    }
     status = "Ready · running on this device";
     onProgress(status);
     return { modelId: MODEL_ID, loadMs: Math.round(performance.now() - start) };

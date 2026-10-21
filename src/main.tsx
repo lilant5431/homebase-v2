@@ -19,6 +19,8 @@ import {
 import { monday, minutesBetween, floatingDate } from "./domain";
 import { toggleAssignment } from "./academic";
 import { useWorkspace } from "./useWorkspace";
+import { readBackupFile } from "./backup";
+import { READ_ONLY_MESSAGE } from "./storage";
 import { usePlanning } from "./usePlanning";
 import { useAcademicEditor } from "./useAcademicEditor";
 import { CalendarView } from "./components/CalendarView";
@@ -27,8 +29,16 @@ import { PlanningPanel } from "./components/PlanningPanel";
 import { AcademicDialog } from "./components/AcademicDialog";
 import "./style.css";
 function App() {
-  const { state, notice, setNotice, save, undo, restore, exportData } =
-    useWorkspace();
+  const {
+    state,
+    notice,
+    setNotice,
+    save,
+    undo,
+    restore,
+    exportData,
+    readOnly,
+  } = useWorkspace();
   const [view, setView] = useState("week"),
     [week, setWeek] = useState(monday()),
     [filter, setFilter] = useState("all");
@@ -157,6 +167,11 @@ function App() {
               New assignment
             </button>
           </section>
+          {readOnly && (
+            <p className="form-help" role="status">
+              {READ_ONLY_MESSAGE}
+            </p>
+          )}
           <section className="summary">
             <div>
               <span className="stat-icon lilac">
@@ -320,9 +335,7 @@ function App() {
           const f = e.target.files?.[0];
           if (!f) return;
           try {
-            if (f.size > 5_000_000)
-              throw Error("Backup is too large (5 MB limit).");
-            await restore(await f.text(), state.revision);
+            await restore(await readBackupFile(f), state.revision);
           } catch (e) {
             setNotice(e instanceof Error ? e.message : String(e));
           } finally {

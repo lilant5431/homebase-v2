@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
-import { KEY, type State } from "./domain";
-import { WorkspaceStore } from "./storage";
+import { type State } from "./domain";
+import { WorkspaceStore, withWorkspaceWriteLock } from "./storage";
+import { createBackupBlob } from "./backup";
 
 export function useWorkspace() {
   const [store] = useState(
@@ -14,6 +15,7 @@ export function useWorkspace() {
   const [state, setState] = useState(store.snapshot.state);
   const [notice, setNotice] = useState(store.snapshot.error);
   const saving = useRef(false);
+  const readOnly = typeof navigator.locks?.request !== "function";
   async function mutate(operation: () => State): Promise<boolean> {
     if (saving.current) {
       setNotice("A save is already in progress. Try again.");
@@ -21,16 +23,14 @@ export function useWorkspace() {
     }
     saving.current = true;
     try {
-      // Web Locks serialize cooperating tabs. The raw snapshot comparison also
-      // detects stale writes and remains active when Web Locks are unavailable.
+      // Snapshot checks reject stale candidates inside the exclusive lock.
+      // Without Web Locks, fail before any operation or storage write executes.
       const execute = () => {
         const next = operation();
         setState(next);
         return true;
       };
-      const result = navigator.locks
-        ? await navigator.locks.request(KEY, execute)
-        : execute();
+      const result = await withWorkspaceWriteLock(navigator.locks, execute);
       setNotice("Saved on this device");
       return result;
     } catch (e) {
@@ -54,12 +54,11 @@ export function useWorkspace() {
   };
   function exportData(recovery = false) {
     try {
-      const raw = recovery
-        ? store.exportRecovery()
-        : JSON.stringify(state, null, 2);
-      const url = URL.createObjectURL(
-        new Blob([raw], { type: "application/json" }),
-      );
+      // Recovery is a verbatim diagnostic copy, exempt from normal-backup limits.
+      const blob = recovery
+        ? new Blob([store.exportRecovery()], { type: "application/json" })
+        : createBackupBlob(state);
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = `homebase-${recovery ? "recovery" : "backup"}.json`;
@@ -69,5 +68,14 @@ export function useWorkspace() {
       setNotice(e instanceof Error ? e.message : String(e));
     }
   }
-  return { state, notice, setNotice, save, undo, restore, exportData };
+  return {
+    state,
+    notice,
+    setNotice,
+    save,
+    undo,
+    restore,
+    exportData,
+    readOnly,
+  };
 }

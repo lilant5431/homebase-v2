@@ -241,8 +241,22 @@ export function assertState(value: unknown): asserts value is State {
   const errors = validateState(value);
   if (errors.length) throw Error(errors.join(" "));
 }
+export const MAX_BACKUP_BYTES = 5_000_000;
+export function assertBackupSize(raw: string) {
+  if (new TextEncoder().encode(raw).byteLength > MAX_BACKUP_BYTES)
+    throw Error(
+      "Workspace exceeds the 5 MB UTF-8 backup limit. Export and reduce it before saving.",
+    );
+}
+/** The same compact JSON encoding is used for persisted state and backups. */
+export function serializeState(state: State): string {
+  assertState(state);
+  const raw = JSON.stringify(state);
+  assertBackupSize(raw);
+  return raw;
+}
 export function parseState(raw: string): State {
-  if (raw.length > 5_000_000) throw Error("Backup is too large (5 MB limit).");
+  assertBackupSize(raw);
   const value: unknown = JSON.parse(raw);
   assertState(value);
   return value;

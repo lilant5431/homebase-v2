@@ -6,8 +6,10 @@ const fake = vi.hoisted(() => ({
   reset: vi.fn(),
   load: vi.fn(),
 }));
+let workers: Array<EventTarget & { terminate: ReturnType<typeof vi.fn> }> = [];
 vi.mock("@mlc-ai/web-llm", () => ({ CreateWebWorkerMLCEngine: fake.load }));
 afterEach(() => {
+  workers = [];
   vi.unstubAllGlobals();
   vi.clearAllMocks();
   vi.resetModules();
@@ -20,8 +22,12 @@ describe("AI worker lifecycle (deterministic fixture)", () => {
     });
     vi.stubGlobal(
       "Worker",
-      class {
-        terminate() {}
+      class extends EventTarget {
+        terminate = vi.fn();
+        constructor() {
+          super();
+          workers.push(this);
+        }
       },
     );
     fake.load.mockResolvedValue({
@@ -96,4 +102,50 @@ describe("AI worker lifecycle (deterministic fixture)", () => {
     ).rejects.toThrow(/Clarification/);
     expect(fake.create).not.toHaveBeenCalled();
   });
+  it.each(["error", "messageerror"])(
+    "startup %s rejects, cleans up, ignores late completion and permits retry",
+    async (eventType) => {
+      browser();
+      let resolveOld!: (engine: unknown) => void;
+      let oldProgress: ((report: { text: string }) => void) | undefined;
+      fake.load.mockImplementationOnce((_worker, _id, options) => {
+        oldProgress = options.initProgressCallback;
+        return new Promise((resolve) => {
+          resolveOld = resolve;
+        });
+      });
+      const ai = await import("./ai");
+      const progress = vi.fn();
+      const pending = ai.loadModel(progress);
+      const rejection = expect(pending).rejects.toThrow(/worker.*initializ/);
+      await vi.waitFor(() => expect(workers).toHaveLength(1));
+      const failed = workers[0];
+      const remove = vi.spyOn(failed, "removeEventListener");
+      failed.dispatchEvent(new Event(eventType));
+      await rejection;
+      expect(failed.terminate).toHaveBeenCalledOnce();
+      expect(remove).toHaveBeenCalledWith("error", expect.any(Function));
+      expect(remove).toHaveBeenCalledWith("messageerror", expect.any(Function));
+      expect(ai.getAIStatus()).toMatchObject({
+        loaded: false,
+        loading: false,
+        busy: false,
+      });
+      await ai.loadModel(progress);
+      expect(workers).toHaveLength(2);
+      expect(ai.getAIStatus()).toMatchObject({ loaded: true, loading: false });
+      const count = progress.mock.calls.length;
+      oldProgress?.({ text: "obsolete initialization progress" });
+      resolveOld({ chat: { completions: { create: vi.fn() } } });
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(progress).toHaveBeenCalledTimes(count);
+      expect(ai.getAIStatus()).toMatchObject({
+        loaded: true,
+        loading: false,
+        status: "Ready · running on this device",
+      });
+      expect(workers[1].terminate).not.toHaveBeenCalled();
+    },
+  );
 });
