@@ -1,5 +1,7 @@
 import * as T from "three";
 import { lumenDrive } from "./lumenDrive";
+import { createLightEvents } from "./lightEvents";
+import { Reflector } from "three/addons/objects/Reflector.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
@@ -13,6 +15,8 @@ import {
   type WorldInput,
 } from "./contract";
 import {
+  receiverVertex,
+  receiverFragment,
   crystalFragment,
   beaconFragment,
   resonanceFragment,
@@ -120,6 +124,15 @@ export function createWorld(
     // Three r186 is WebGL2-only; the declarations retain a legacy union.
     gl = r.getContext() as WebGL2RenderingContext;
     requireHDR(gl);
+    const sampleCounts = gl.getInternalformatParameter(
+      gl.RENDERBUFFER,
+      gl.RGBA16F,
+      gl.SAMPLES,
+    ) as Int32Array;
+    if (!Array.from(sampleCounts).includes(4))
+      throw new Error(
+        "Lumimark optics requires 4× multisampled HDR targets. The workbench remains available.",
+      );
     r.debug.onShaderError = (context, program) => {
       throw new Error(
         `World shader compilation failed: ${context.getProgramInfoLog(program) || "unknown error"}`,
@@ -145,7 +158,8 @@ export function createWorld(
     const environment = own(pmrem.fromScene(room, 0.04));
     scene.environment = environment.texture;
     scene.environmentIntensity = 0.6;
-    scene.add(new T.HemisphereLight("#b2e4ff", "#1a152b", 1.2));
+    const hemisphere = new T.HemisphereLight("#b2e4ff", "#1a152b", 1.2);
+    scene.add(hemisphere);
     const movingLight = new T.PointLight("#c0efff", 320, 65, 1.6);
     movingLight.position.set(6, 8, 4);
     scene.add(movingLight);
@@ -156,6 +170,11 @@ export function createWorld(
     const tint = { value: new T.Color("#8cdeef") };
     const targetTint = new T.Color();
     const circuit = {
+      uRefined: { value: 1 },
+      uFlash: { value: 0 },
+      uEvents: {
+        value: Array.from({ length: 8 }, () => new T.Vector4(-100, 0, 0, 0)),
+      },
       uLiving: { value: 1 },
       uEnergy: { value: 1 },
       uPhase: { value: 0 },
@@ -218,6 +237,57 @@ export function createWorld(
     );
     plinth.position.y = -0.15;
     scene.add(plinth);
+    const receiver = own(
+      new Reflector(own(new T.CircleGeometry(12, 192)), {
+        textureWidth: 1536,
+        textureHeight: 1536,
+        multisample: 4,
+        clipBias: 0.003,
+        shader: {
+          name: "Lumimark receiver",
+          uniforms: {
+            tDiffuse: { value: null },
+            textureMatrix: { value: new T.Matrix4() },
+            color: { value: new T.Color() },
+          },
+          vertexShader: receiverVertex,
+          fragmentShader: receiverFragment,
+        },
+      }),
+    );
+    Object.assign((receiver.material as T.ShaderMaterial).uniforms, common);
+    receiver.rotation.x = -Math.PI / 2;
+    receiver.position.y = -0.285;
+    scene.add(receiver);
+    const receiverHousing = new T.Group();
+    const platinum = own(
+      new T.MeshStandardMaterial({
+        color: "#6c8b96",
+        metalness: 0.96,
+        roughness: 0.24,
+      }),
+    );
+    const ceramic = own(
+      new T.MeshStandardMaterial({
+        color: "#07131b",
+        metalness: 0.65,
+        roughness: 0.27,
+      }),
+    );
+    for (const [radius, tube, y] of [
+      [4.85, 0.14, -0.18],
+      [5.1, 0.055, -0.22],
+      [11.95, 0.09, -0.28],
+    ]) {
+      const lip = new T.Mesh(
+        own(new T.TorusGeometry(radius, tube, 12, 256)),
+        radius < 5 ? platinum : ceramic,
+      );
+      lip.rotation.x = Math.PI / 2;
+      lip.position.y = y;
+      receiverHousing.add(lip);
+    }
+    scene.add(receiverHousing);
     // Near-field light instruments provide high-contrast, real scene geometry
     // for refraction. Their bent images are visible through multiple facets.
     const resonance = own(
@@ -230,6 +300,7 @@ export function createWorld(
     const collectorGeometry = own(new T.SphereGeometry(0.075, 12, 8));
     const collectors: T.Mesh[] = [];
     const halos: T.Group[] = [];
+    const railGroups: T.Group[] = [];
     for (let i = 0; i < 3; i++) {
       const halo = new T.Group();
       const radius = 7.1 + i * 0.9;
@@ -253,6 +324,29 @@ export function createWorld(
         halo.add(collector);
         collectors.push(collector);
       }
+      const rails = new T.Group();
+      const arcGeometry = own(
+        new T.TorusGeometry(radius, 0.105, 12, 64, Math.PI / 3 - 0.065),
+      );
+      const channelGeometry = own(
+        new T.TorusGeometry(radius + 0.13, 0.028, 10, 64, Math.PI / 3 - 0.13),
+      );
+      const collarGeometry = own(new T.BoxGeometry(0.26, 0.32, 0.22));
+      for (let j = 0; j < 6; j++) {
+        const segment = new T.Mesh(arcGeometry, platinum);
+        segment.rotation.z = (j * Math.PI) / 3;
+        rails.add(segment);
+        const channel = new T.Mesh(channelGeometry, resonance);
+        channel.rotation.z = (j * Math.PI) / 3 + 0.03;
+        rails.add(channel);
+        const a = (j * Math.PI) / 3 - 0.025;
+        const collar = new T.Mesh(collarGeometry, ceramic);
+        collar.position.set(Math.cos(a) * radius, Math.sin(a) * radius, 0);
+        collar.rotation.z = a;
+        rails.add(collar);
+      }
+      halo.add(rails);
+      railGroups.push(rails);
       filament.userData.originalMaterial = filament.material;
       halo.position.set(0, 6.1 + i * 0.4, 0);
       halo.rotation.set(1.1 + i * 0.44, 0.15 + i * 0.9, 0.3);
@@ -375,7 +469,11 @@ export function createWorld(
       beamOrigin = new T.Vector3();
     const up = new T.Vector3(0, 1, 0);
     scene.add(beam);
-    const composer = own(new EffectComposer(r));
+    const hdrTarget = new T.WebGLRenderTarget(1, 1, {
+      type: T.HalfFloatType,
+      samples: 4,
+    });
+    const composer = own(new EffectComposer(r, hdrTarget));
     const renderPass = own(new RenderPass(scene, camera));
     composer.addPass(renderPass);
     const bloom = own(
@@ -393,13 +491,21 @@ export function createWorld(
       height = Math.max(1, Math.round(rect.height));
       r.setSize(width, height, false);
       composer.setSize(width, height);
-      r.setRenderTarget(composer.renderTarget1);
-      const framebufferStatus = gl!.checkFramebufferStatus(gl!.FRAMEBUFFER);
+      for (const target of [
+        composer.renderTarget1,
+        composer.renderTarget2,
+        receiver.getRenderTarget(),
+      ]) {
+        r.setRenderTarget(target);
+        if (
+          gl!.checkFramebufferStatus(gl!.FRAMEBUFFER) !==
+          gl!.FRAMEBUFFER_COMPLETE
+        )
+          throw new Error(
+            "Multisampled HDR framebuffer allocation failed. The workbench remains available.",
+          );
+      }
       r.setRenderTarget(null);
-      if (framebufferStatus !== gl!.FRAMEBUFFER_COMPLETE)
-        throw new Error(
-          "HDR framebuffer allocation failed. The workbench remains available.",
-        );
       // Validate all six probe attachments too; capability flags alone do not
       // establish that allocations succeeded on this GPU.
       for (const target of [cubeTarget])
@@ -446,6 +552,7 @@ export function createWorld(
       frames = 0,
       startupMs = 0,
       worstFrame = 0;
+    const lightEvents = createLightEvents(initial);
     let frameTimes: number[] = [],
       submitTimes: number[] = [];
     resumeClock = () => {
@@ -511,6 +618,18 @@ export function createWorld(
         );
         tint.value.lerp(targetTint, input.reducedMotion ? 1 : ease);
         const drive = lumenDrive(input, elapsed, smoothPointer.length());
+        const refined = input.refined !== false;
+        const response = lightEvents.sample(elapsed);
+        circuit.uRefined.value = refined ? 1 : 0;
+        circuit.uFlash.value = refined ? response.flash : 0;
+        circuit.uEvents.value.forEach((value, i) => {
+          const event = response.events[i];
+          value.set(event?.time ?? -100, event?.strength ?? 0, 0, 0);
+        });
+        receiver.visible = receiverHousing.visible = refined;
+        plinth.visible = !refined;
+        rimLight.color.set(refined ? "#bed8e3" : "#e9baff");
+        hemisphere.groundColor.set(refined ? "#07131b" : "#1a152b");
         circuit.uLiving.value = drive.living;
         circuit.uEnergy.value = drive.energy;
         circuit.uPhase.value = drive.phase;
@@ -547,7 +666,8 @@ export function createWorld(
           light.color.copy(tint.value);
           light.visible = !!drive.living;
         }
-        sourceLight.intensity = 80 * drive.energy;
+        sourceLight.intensity =
+          80 * drive.energy * (1 + response.flash * 0.4 * (refined ? 1 : 0));
         pedestalLight.intensity = 35 * drive.energy;
         crownLight.intensity = 24 * drive.energy;
         movingLight.intensity = drive.living ? 90 + drive.energy * 35 : 320;
@@ -559,6 +679,8 @@ export function createWorld(
             .multiplyScalar(0.4 + drive.energy * 0.55);
         else whiteLight.color.setRGB(0.9, 1.4, 1.8);
         halos.forEach((halo, i) => {
+          railGroups[i].visible = refined;
+          halo.children[0].visible = halo.children[1].visible = !refined;
           const filament = halo.children[1] as T.Mesh;
           filament.material = drive.living
             ? resonance
@@ -597,7 +719,9 @@ export function createWorld(
             );
           }
         });
-        collectors.forEach((node) => (node.visible = !!drive.living));
+        collectors.forEach(
+          (node) => (node.visible = !!drive.living && !refined),
+        );
         receiverRings.forEach(
           (ring) =>
             (ring.material = drive.living
@@ -625,7 +749,10 @@ export function createWorld(
         crystalGroup.visible = false;
         // Capture all six faces every frame. Exclude the refractor to prevent
         // texture feedback; its reflection/refraction samples this live probe.
+        // Prevent recursive planar captures and texture feedback in the six-face probe.
+        receiver.visible = false;
         probe.update(r, scene);
+        receiver.visible = refined;
 
         crystalGroup.visible = true;
         r.setRenderTarget(null);
@@ -660,7 +787,9 @@ export function createWorld(
             width: size.x,
             height: size.y,
             bufferEstimateMB:
-              (size.x * size.y * 8 * 2.917 + (6 * 1024 * 1024 * 8 * 4) / 3) /
+              (size.x * size.y * 8 * (2.917 + 8) +
+                (6 * 1024 * 1024 * 8 * 4) / 3 +
+                1536 * 1536 * 8 * 5) /
               1048576,
             gpu,
             frames,
@@ -670,6 +799,7 @@ export function createWorld(
               .map((v) => v.toFixed(2))
               .join(", "),
             motion: input.reducedMotion ? "Reduced — static" : "Live",
+            response: `${response.count} events · ${response.reason} · ${response.events.length} active`,
           });
           frameTimes = [];
           submitTimes = [];
@@ -693,6 +823,7 @@ export function createWorld(
     return {
       update(next) {
         if (disposed) return;
+        lightEvents.update(next, elapsed);
         input = next;
         if (compiled) visibilityChanged();
       },

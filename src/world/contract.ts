@@ -11,6 +11,7 @@ export type WorldInput = {
   dispersion?: number;
   orbit?: number;
   elevation?: number;
+  refined?: boolean;
   living?: boolean;
   beacon?: boolean;
   power?: number;
@@ -36,6 +37,7 @@ export type WorldMetrics = {
   elapsed: number;
   camera: string;
   motion: string;
+  response?: string;
 };
 export type WorldHooks = {
   metrics: (value: WorldMetrics) => void;

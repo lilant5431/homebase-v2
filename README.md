@@ -1,6 +1,6 @@
 # Homebase V2
 
-Experimental [V2.1E Living Lumen demo and visual evidence](docs/lumen/README.md): run the app and open `/#crystal`.
+Experimental [Lumimark V2.1F optical refinement and visual evidence](docs/optical/README.md): run the app and open `/#crystal`. Visible branding is Lumimark; repository paths and existing user data remain compatible.
 
 A responsive academic planner prototype built with React, TypeScript, and Vite. This repository was empty apart from its initial commit; V1 has not been modified.
 

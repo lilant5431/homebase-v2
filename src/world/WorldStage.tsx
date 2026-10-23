@@ -26,7 +26,10 @@ export default function WorldStage({
       matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
   const [still, setStill] = useState(false);
-  const [living, setLiving] = useState(true);
+  const [labOpen, setLabOpen] = useState(true);
+  const [metricsOpen, setMetricsOpen] = useState(false);
+  const living = true;
+  const [refined, setRefined] = useState(true);
   const [beacon, setBeacon] = useState(true);
   const [power, setPower] = useState(1);
   const [beamWidth, setBeamWidth] = useState(0.55);
@@ -43,6 +46,7 @@ export default function WorldStage({
     refraction: !straight,
     centered,
     living,
+    refined,
     beacon,
     power,
     beamWidth,
@@ -57,6 +61,7 @@ export default function WorldStage({
     refraction: !straight,
     centered,
     living,
+    refined,
     beacon,
     power,
     beamWidth,
@@ -113,6 +118,7 @@ export default function WorldStage({
     straight,
     centered,
     living,
+    refined,
     beacon,
     power,
     beamWidth,
@@ -132,7 +138,7 @@ export default function WorldStage({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "homebase-lumen-world.webm";
+      a.download = "lumimark-optical-world.webm";
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       setRecordStatus(
@@ -159,21 +165,26 @@ export default function WorldStage({
       <details
         className="gem-lab"
         data-comparison={false}
-        open
+        open={labOpen}
+        onToggle={(e) => {
+          const open = e.currentTarget.open;
+          setLabOpen(open);
+          if (open) setMetricsOpen(false);
+        }}
         aria-label="Lumen environment controls"
       >
         <summary>Lumen / light chamber</summary>
-        <span className="au-kicker">V2.1E / LIVING LUMEN</span>
+        <span className="au-kicker">V2.1F / LUMIMARK OPTICS</span>
         <div
           className="gem-options"
           role="group"
           aria-label="Environment comparison"
         >
-          <button aria-pressed={!living} onClick={() => setLiving(false)}>
-            V2.1D baseline
+          <button aria-pressed={!refined} onClick={() => setRefined(false)}>
+            V2.1E reference
           </button>
-          <button aria-pressed={living} onClick={() => setLiving(true)}>
-            Living environment
+          <button aria-pressed={refined} onClick={() => setRefined(true)}>
+            Refined environment
           </button>
         </div>
         <button
@@ -280,9 +291,9 @@ export default function WorldStage({
           Reset inspection
         </button>
         <span>
-          {living
-            ? "LUMEN / focused core, atmospheric beacon and resonant environment"
-            : "V2.1D Lumen / same cut, camera, exposure and bloom"}
+          {refined
+            ? "LUMEN / optical rails, reflective receiver and interaction wavefronts"
+            : "V2.1E / same cut, camera, light settings, exposure and bloom"}
         </span>
       </details>
       <div className="world-caption">
@@ -297,7 +308,15 @@ export default function WorldStage({
                 : "BUILDING THE WORLD"}
         </span>
       </div>
-      <details className="world-diagnostics">
+      <details
+        className="world-diagnostics"
+        open={metricsOpen}
+        onToggle={(e) => {
+          const open = e.currentTarget.open;
+          setMetricsOpen(open);
+          if (open) setLabOpen(false);
+        }}
+      >
         <summary>
           World instrument panel{" "}
           <span>
@@ -314,8 +333,10 @@ export default function WorldStage({
           <p>
             Convex facet tracing ·{" "}
             {dispersion === 0 ? "achromatic" : "3 spectral bands"} · 3 internal
-            segments · filtered 1024² probe · analytic spine / 40-step
-            atmosphere
+            segments · filtered 1024² probe · analytic spine /{" "}
+            {refined
+              ? "64-step atmosphere · 4× HDR MSAA"
+              : "40-step atmosphere"}
           </p>
           {stats && !failure && !disabled && (
             <dl>
@@ -376,6 +397,10 @@ export default function WorldStage({
               <div>
                 <dt>Camera position</dt>
                 <dd>{stats.camera}</dd>
+              </div>
+              <div>
+                <dt>Light response</dt>
+                <dd>{stats.response || "Idle"}</dd>
               </div>
               <div>
                 <dt>Motion</dt>

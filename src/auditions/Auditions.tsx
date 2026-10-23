@@ -126,8 +126,8 @@ export default function Auditions({ world = false }: { world?: boolean }) {
   useEffect(() => {
     const previous = document.title;
     document.title = world
-      ? "Living Lumen · Homebase V2.1E"
-      : `${identity.name} · Homebase visual auditions`;
+      ? "Living Lumen · Lumimark V2.1F"
+      : `${identity.name} · Lumimark visual auditions`;
     return () => {
       document.title = previous;
     };
@@ -451,7 +451,7 @@ export default function Auditions({ world = false }: { world?: boolean }) {
         {world ? (
           <div className="world-mode-bar">
             <a href="#auditions/meridian">← V2.1A auditions</a>
-            <span>V2.1E / CRYSTAL WORLD</span>
+            <span>V2.1F / CRYSTAL WORLD</span>
             <button
               aria-pressed={immersive}
               onClick={() => setImmersive(!immersive)}
@@ -500,10 +500,10 @@ export default function Auditions({ world = false }: { world?: boolean }) {
           >
             <Gem size={27} />
             <span>
-              homebase
+              lumimark
               <small>
                 {world
-                  ? "CRYSTAL WORLD / V2.1E"
+                  ? "CRYSTAL WORLD / V2.1F"
                   : `${identity.name.toUpperCase()} / V2.1A`}
               </small>
             </span>

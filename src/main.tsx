@@ -78,7 +78,7 @@ function App() {
           <span className="brand-icon">
             <Gem size={24} />
           </span>
-          homebase<span className="v2">V2</span>
+          lumimark<span className="v2">V2</span>
         </a>
         <div className="workspace">
           <span className="avatar">A</span>
