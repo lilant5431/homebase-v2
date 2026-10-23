@@ -6,6 +6,11 @@ export type WorldInput = {
   reducedMotion: boolean;
   refraction?: boolean;
   centered?: boolean;
+  design?: "original" | "lumen" | "vesper";
+  comparison?: boolean;
+  dispersion?: number;
+  orbit?: number;
+  elevation?: number;
 };
 export type WorldMetrics = {
   startupMs: number;
@@ -69,3 +74,11 @@ export const viewpoints = {
     description: "Room for what comes next.",
   },
 } as const;
+
+export function comparisonOffset(
+  index: number,
+  angle: number,
+): [number, number] {
+  const distance = (index - 1) * 7;
+  return [Math.cos(angle) * distance, -Math.sin(angle) * distance];
+}

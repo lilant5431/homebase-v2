@@ -7,6 +7,7 @@ import { makeCrystalGeometry } from "./crystalGeometry";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import {
   viewpoints,
+  comparisonOffset,
   type WorldController,
   type WorldHooks,
   type WorldInput,
@@ -190,10 +191,10 @@ export function createWorld(
       }),
     );
     const whiteLight = own(
-      new T.MeshBasicMaterial({ color: new T.Color(2.7, 3.8, 4.5) }),
+      new T.MeshBasicMaterial({ color: new T.Color(0.9, 1.4, 1.8) }),
     );
     const goldLight = own(
-      new T.MeshBasicMaterial({ color: new T.Color(3, 1.8, 0.65) }),
+      new T.MeshBasicMaterial({ color: new T.Color(1.7, 1.3, 0.65) }),
     );
     const plinth = new T.Mesh(
       own(new T.CylinderGeometry(4.1, 5, 0.28, 6)),
@@ -239,40 +240,57 @@ export function createWorld(
       scene.add(ring);
     }
     const cubeTarget = own(
-      new T.WebGLCubeRenderTarget(512, {
+      new T.WebGLCubeRenderTarget(1024, {
         type: T.HalfFloatType,
-        generateMipmaps: false,
-        minFilter: T.LinearFilter,
+        generateMipmaps: true,
+        minFilter: T.LinearMipmapLinearFilter,
         magFilter: T.LinearFilter,
       }),
     );
     const probe = new T.CubeCamera(0.1, 100, cubeTarget);
     probe.position.set(0, 6, 0);
-    const { geometry, planes } = makeCrystalGeometry();
-    own(geometry);
-    const crystalGroup = new T.Group();
-    crystalGroup.position.set(0, 6.2, 0);
-    scene.add(crystalGroup);
-    const glass = own(
-      new T.ShaderMaterial({
-        vertexShader: worldVertex,
-        fragmentShader: crystalFragment,
-        defines: { PLANE_COUNT: planes.length },
-        uniforms: {
-          uEnvironment: { value: cubeTarget.texture },
-          uPlanes: { value: planes },
-          uWorldMatrix: { value: new T.Matrix4() },
-          uInverseWorld: { value: new T.Matrix4() },
-          uTime: time,
-          uTint: tint,
-          uLight: { value: movingLight.position },
-          uEmphasis: { value: 0 },
-          uRefraction: { value: 1 },
-        },
-        side: T.FrontSide,
+    const legacyTarget = own(
+      new T.WebGLCubeRenderTarget(512, {
+        type: T.HalfFloatType,
+        minFilter: T.LinearFilter,
+        generateMipmaps: false,
       }),
     );
-    crystalGroup.add(new T.Mesh(geometry, glass));
+    const legacyProbe = new T.CubeCamera(0.1, 100, legacyTarget);
+    legacyProbe.position.copy(probe.position);
+    const crystalGroup = new T.Group();
+    scene.add(crystalGroup);
+    const gems = (["original", "lumen", "vesper"] as const).map((design, i) => {
+      const { geometry, planes } = makeCrystalGeometry(design);
+      own(geometry);
+      const glass = own(
+        new T.ShaderMaterial({
+          vertexShader: worldVertex,
+          fragmentShader: crystalFragment,
+          defines: { PLANE_COUNT: planes.length },
+          uniforms: {
+            uEnvironment: {
+              value: i === 0 ? legacyTarget.texture : cubeTarget.texture,
+            },
+            uPlanes: { value: planes },
+            uWorldMatrix: { value: new T.Matrix4() },
+            uInverseWorld: { value: new T.Matrix4() },
+            uTime: time,
+            uTint: tint,
+            uLight: { value: movingLight.position },
+            uEmphasis: { value: 0 },
+            uRefraction: { value: 1 },
+            uDispersion: { value: 0 },
+            uLegacy: { value: i === 0 ? 1 : 0 },
+            uDesign: { value: i },
+          },
+          side: T.FrontSide,
+        }),
+      );
+      const mesh = new T.Mesh(geometry, glass);
+      crystalGroup.add(mesh);
+      return { design, mesh, glass };
+    });
     const random = (i: number) => {
       const n = Math.sin(i * 127.1 + 17.7) * 43758.5453;
       return n - Math.floor(n);
@@ -310,7 +328,7 @@ export function createWorld(
     const renderPass = own(new RenderPass(scene, camera));
     composer.addPass(renderPass);
     const bloom = own(
-      new UnrealBloomPass(new T.Vector2(1, 1), 0.4, 0.45, 1.25),
+      new UnrealBloomPass(new T.Vector2(1, 1), 0.18, 0.35, 1.6),
     );
     composer.addPass(bloom);
     const output = own(new OutputPass());
@@ -333,16 +351,17 @@ export function createWorld(
         );
       // Validate all six probe attachments too; capability flags alone do not
       // establish that allocations succeeded on this GPU.
-      for (let face = 0; face < 6; face++) {
-        r.setRenderTarget(cubeTarget, face);
-        if (
-          gl!.checkFramebufferStatus(gl!.FRAMEBUFFER) !==
-          gl!.FRAMEBUFFER_COMPLETE
-        )
-          throw new Error(
-            "HDR cube probe allocation failed. The workbench remains available.",
-          );
-      }
+      for (const target of [cubeTarget, legacyTarget])
+        for (let face = 0; face < 6; face++) {
+          r.setRenderTarget(target, face);
+          if (
+            gl!.checkFramebufferStatus(gl!.FRAMEBUFFER) !==
+            gl!.FRAMEBUFFER_COMPLETE
+          )
+            throw new Error(
+              "HDR cube probe allocation failed. The workbench remains available.",
+            );
+        }
       r.setRenderTarget(null);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
@@ -404,18 +423,20 @@ export function createWorld(
         orbitRadius += (pose.radius - orbitRadius) * ease;
         orbitHeight += (pose.height - orbitHeight) * ease;
         // A narrow viewport gets the centered sculpture; the HTML then stacks.
-        const offset = input.centered || width < 1000 ? 0 : 7.6;
+        const offset =
+          input.comparison || input.centered || width < 1000 ? 0 : 7.6;
         compositionOffset += (offset - compositionOffset) * ease;
         if (input.reducedMotion) smoothPointer.set(0, 0);
         else smoothPointer.lerp(pointer, 1 - Math.exp(-delta * 2));
         const angle =
           orbitAngle +
+          (input.orbit || 0) +
           (input.reducedMotion
             ? 0
             : smoothPointer.x * 0.035 + Math.sin(elapsed * 0.12) * 0.012);
         camera.position.set(
           Math.sin(angle) * orbitRadius,
-          orbitHeight + smoothPointer.y * 0.35,
+          orbitHeight + (input.elevation || 0) + smoothPointer.y * 0.35,
           Math.cos(angle) * orbitRadius,
         );
         look.set(
@@ -437,19 +458,25 @@ export function createWorld(
               : "#8cdeef",
         );
         tint.value.lerp(targetTint, input.reducedMotion ? 1 : ease);
-        glass.uniforms.uEmphasis.value = input.emphasis ? 1 : 0;
-        glass.uniforms.uRefraction.value = input.refraction === false ? 0 : 1;
-        crystalGroup.position.y = 6.2 + Math.sin(elapsed * 0.38) * 0.13;
-        crystalGroup.rotation.set(
-          Math.sin(elapsed * 0.17) * 0.022,
-          0.22 + Math.sin(elapsed * 0.09) * 0.09,
-          0.08,
-        );
-        crystalGroup.updateMatrixWorld(true);
-        glass.uniforms.uWorldMatrix.value.copy(crystalGroup.matrixWorld);
-        glass.uniforms.uInverseWorld.value
-          .copy(crystalGroup.matrixWorld)
-          .invert();
+        gems.forEach(({ design, mesh, glass }, i) => {
+          mesh.visible =
+            !!input.comparison || design === (input.design || "lumen");
+          const [x, z] = input.comparison ? comparisonOffset(i, angle) : [0, 0];
+          mesh.position.set(x, 6.2 + Math.sin(elapsed * 0.38) * 0.08, z);
+          mesh.scale.setScalar(input.comparison ? 0.62 : 1);
+          mesh.rotation.set(
+            Math.sin(elapsed * 0.17) * 0.012,
+            0.22 + Math.sin(elapsed * 0.09) * 0.04,
+            0.02,
+          );
+          mesh.updateMatrixWorld(true);
+          glass.uniforms.uWorldMatrix.value.copy(mesh.matrixWorld);
+          glass.uniforms.uInverseWorld.value.copy(mesh.matrixWorld).invert();
+          glass.uniforms.uEmphasis.value = input.emphasis ? 1 : 0;
+          glass.uniforms.uRefraction.value = input.refraction === false ? 0 : 1;
+          glass.uniforms.uDispersion.value =
+            input.dispersion ?? (i === 0 ? 0.005 : 0);
+        });
         halos.forEach((halo, i) => {
           halo.rotation.z = 0.3 + elapsed * (i === 1 ? -0.025 : 0.018);
           halo.rotation.y =
@@ -477,6 +504,8 @@ export function createWorld(
         // Capture all six faces every frame. Exclude the refractor to prevent
         // texture feedback; its reflection/refraction samples this live probe.
         probe.update(r, scene);
+        if (input.comparison || input.design === "original")
+          legacyProbe.update(r, scene);
         crystalGroup.visible = true;
         r.setRenderTarget(null);
         composer.render(delta);
@@ -510,7 +539,10 @@ export function createWorld(
             width: size.x,
             height: size.y,
             bufferEstimateMB:
-              (size.x * size.y * 8 * 2.917 + 6 * 512 * 512 * 8) / 1048576,
+              (size.x * size.y * 8 * 2.917 +
+                (6 * 1024 * 1024 * 8 * 4) / 3 +
+                6 * 512 * 512 * 8) /
+              1048576,
             gpu,
             frames,
             elapsed,

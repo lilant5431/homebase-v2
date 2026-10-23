@@ -648,3 +648,65 @@
     scroll-behavior: auto !important;
   }
 }
+.gem-lab {
+  position: fixed;
+  right: 24px;
+  top: 150px;
+  width: 300px;
+  padding: 16px;
+  background: #091827ec;
+  border: 1px solid #b4d5e650;
+  z-index: 7;
+  color: #e6f1f4;
+  font:
+    10px/1.6 "Segoe UI",
+    sans-serif;
+  backdrop-filter: blur(14px);
+}
+.gem-options {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+.audition .gem-lab button {
+  border: 1px solid #c0ddeb50;
+  padding: 6px 8px;
+  font-size: 10px;
+}
+.gem-lab button[aria-pressed="true"] {
+  background: #badde7;
+  color: #092334;
+}
+.gem-lab label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 8px 0;
+  gap: 8px;
+}
+.gem-lab select {
+  max-width: 180px;
+  background: #172d3e;
+  color: #e6f1f4;
+  border: 1px solid #b9d8e550;
+  padding: 4px;
+}
+.gem-lab > span:last-child {
+  display: block;
+  font-size: 8px;
+  color: #b5d4df;
+  margin-top: 12px;
+}
+@media (max-width: 850px) {
+  .gem-lab {
+    position: relative;
+    top: auto;
+    right: auto;
+    margin: 15px 18px;
+    width: auto;
+  }
+}
+.audition:has(.gem-lab[data-comparison="true"]) .au-hero > div {
+  visibility: hidden;
+}

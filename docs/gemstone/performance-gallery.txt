@@ -1,0 +1,38 @@
+Convex facet tracing · achromatic · 3 internal segments · filtered 1024² probe / original-cut 512² probe
+
+Startup / first rendered frame
+142 ms
+Rendered frame rate
+165.0 FPS
+Frame interval p95 / worst
+6.2 / 102.8 ms
+CPU update + render submission
+2.2 ms
+GPU timer (sampled)
+3.9 ms
+Draw calls / triangles incl. passes
+448 / 414,848
+Geometries / textures / programs
+31 / 18 / 31
+Render buffer resolution
+1599 × 1000
+Estimated HDR color buffers only
+~111.6 MB
+Rendered frames / world time
+18065 / 109.7 s
+Camera position
+-19.47, 6.28, 3.02
+Motion
+Live
+
+ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 (0x00002D05) Direct3D11 vs_5_0 ps_5_0, D3D11)
+
+Compare without refraction
+Freeze world motion
+Record 8s world
+Test startup failure
+Test context loss
+
+World recording saved · 3.9 MB
+
+FPS measures submitted frames, not display scanout. Color-buffer estimate excludes depth, shadows, environment maps and driver overhead. No automatic quality downgrade.

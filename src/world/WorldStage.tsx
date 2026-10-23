@@ -3,7 +3,6 @@ import { startWorldSession } from "./session";
 import { recordWorld } from "./recording";
 import { viewpoints, type WorldArea, type WorldMetrics } from "./contract";
 import "./world.css";
-
 export default function WorldStage({
   area,
   emphasis,
@@ -27,6 +26,13 @@ export default function WorldStage({
       matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
   const [still, setStill] = useState(false);
+  const [design, setDesign] = useState<"original" | "lumen" | "vesper">(
+    "lumen",
+  );
+  const [comparison, setComparison] = useState(false);
+  const [dispersion, setDispersion] = useState(0);
+  const [orbit, setOrbit] = useState(0);
+  const [elevation, setElevation] = useState(0);
   const [straight, setStraight] = useState(false);
   const [recordStatus, setRecordStatus] = useState("");
   const failNext = useRef(false);
@@ -36,6 +42,11 @@ export default function WorldStage({
     reducedMotion: reduced || still,
     refraction: !straight,
     centered,
+    design,
+    comparison,
+    dispersion,
+    orbit,
+    elevation,
   });
   latest.current = {
     area,
@@ -43,6 +54,11 @@ export default function WorldStage({
     reducedMotion: reduced || still,
     refraction: !straight,
     centered,
+    design,
+    comparison,
+    dispersion,
+    orbit,
+    elevation,
   };
   useEffect(() => {
     const media = matchMedia("(prefers-reduced-motion: reduce)");
@@ -85,7 +101,19 @@ export default function WorldStage({
   }, [disabled, attempt]);
   useEffect(() => {
     session.current?.update(latest.current);
-  }, [area, emphasis, reduced, still, straight, centered]);
+  }, [
+    area,
+    emphasis,
+    reduced,
+    still,
+    straight,
+    centered,
+    design,
+    comparison,
+    dispersion,
+    orbit,
+    elevation,
+  ]);
   async function record() {
     if (!canvas.current || recording.current) return;
     let capture: ReturnType<typeof recordWorld> | undefined;
@@ -98,7 +126,7 @@ export default function WorldStage({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "homebase-crystal-world.webm";
+      a.download = "homebase-gemstone-world.webm";
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       setRecordStatus(
@@ -122,6 +150,120 @@ export default function WorldStage({
           />
         )}
       </div>
+      <details
+        className="gem-lab"
+        data-comparison={comparison}
+        open
+        aria-label="Gemstone comparison controls"
+      >
+        <summary>Gemstone atelier / controls</summary>
+        <span className="au-kicker">V2.1D / GEMSTONE ATELIER</span>
+        <div className="gem-options" role="group" aria-label="Gemstone design">
+          {(
+            [
+              ["original", "00 / Original cut"],
+              ["lumen", "01 / Lumen"],
+              ["vesper", "02 / Vesper"],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              aria-pressed={design === key}
+              onClick={() => {
+                setDesign(key);
+                setComparison(false);
+              }}
+            >
+              {label}
+            </button>
+          ))}
+          <button
+            aria-pressed={comparison}
+            onClick={() => setComparison(!comparison)}
+          >
+            Side by side
+          </button>
+        </div>
+        <label>
+          Dispersion{" "}
+          <select
+            value={dispersion}
+            onChange={(e) => setDispersion(Number(e.target.value))}
+          >
+            <option value={0}>Off / coherent path</option>
+            <option value={0.00025}>Subtle / ±0.00025</option>
+            <option value={0.005}>V2.1C / ±0.005</option>
+          </select>
+        </label>
+        <label>
+          Inspect orbit{" "}
+          <input
+            aria-label="Inspect orbit"
+            type="range"
+            min={-180}
+            max={180}
+            step={1}
+            value={(orbit * 180) / Math.PI}
+            onChange={(e) => setOrbit((Number(e.target.value) * Math.PI) / 180)}
+          />
+        </label>
+        <label>
+          Inspect height{" "}
+          <input
+            aria-label="Inspect height"
+            type="range"
+            min={-3}
+            max={6}
+            step={0.1}
+            value={elevation}
+            onChange={(e) => setElevation(Number(e.target.value))}
+          />
+        </label>
+        <div
+          className="gem-options"
+          role="group"
+          aria-label="Inspection angles"
+        >
+          {(
+            [
+              ["Front", 0],
+              ["Three-quarter", Math.PI / 4],
+              ["Opposing", Math.PI],
+            ] as const
+          ).map(([label, angle]) => (
+            <button
+              key={label}
+              onClick={() =>
+                setOrbit(
+                  Math.atan2(
+                    Math.sin(angle - viewpoints[area].angle),
+                    Math.cos(angle - viewpoints[area].angle),
+                  ),
+                )
+              }
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => {
+            setOrbit(0);
+            setElevation(0);
+          }}
+        >
+          Reset inspection
+        </button>
+        <span>
+          {comparison
+            ? "LEFT: V2.1C · CENTER: LUMEN · RIGHT: VESPER"
+            : design === "lumen"
+              ? "LUMEN / precision lantern"
+              : design === "vesper"
+                ? "VESPER / angular heart"
+                : "Original cut in shared lighting; legacy dispersion reproduces the RGB split"}
+        </span>
+      </details>
       <div className="world-caption">
         <span>{viewpoints[area].label} / CRYSTAL WORLD</span>
         <span>
@@ -149,8 +291,9 @@ export default function WorldStage({
         </summary>
         <div className="world-instruments">
           <p>
-            Convex facet ray tracing · 3 spectral bands · 3 internal segments ·
-            live 512² × 6 HDR probe
+            Convex facet tracing ·{" "}
+            {dispersion === 0 ? "achromatic" : "3 spectral bands"} · 3 internal
+            segments · filtered 1024² probe / original-cut 512² probe
           </p>
           {stats && !failure && !disabled && (
             <dl>

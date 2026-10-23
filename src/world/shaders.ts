@@ -25,6 +25,9 @@ export const crystalFragment = /* glsl */ `
   uniform float uTime;
   uniform float uEmphasis;
   uniform float uRefraction;
+  uniform float uDispersion;
+  uniform float uLegacy;
+  uniform float uDesign;
   uniform vec3 uLight;
   uniform vec3 uTint;
   varying vec3 vWorld;
@@ -36,7 +39,7 @@ export const crystalFragment = /* glsl */ `
     // Box-projected local probe corrects first-order parallax. Geometry outside
     // this proxy and occlusion at the exit position remain approximations.
     vec3 center = vec3(0.,6.,0.);
-    vec3 safeD = mix(vec3(0.00001), d, step(vec3(.00001),abs(d)));
+    vec3 safeD = sign(d+vec3(1e-8))*max(abs(d),vec3(.00001));
     vec3 farHit = max((center+vec3(22.,16.,22.)-p)/safeD,
                       (center-vec3(22.,16.,22.)-p)/safeD);
     float t = max(0.,min(farHit.x,min(farHit.y,farHit.z)));
@@ -64,6 +67,12 @@ export const crystalFragment = /* glsl */ `
   float internalLight(vec3 p) {
     // Volumetric growth veils and a narrow, moving light core are integrated
     // along the refracted ray, so apparent depth changes with the actual path.
+    if(uLegacy < .5) {
+      float coreShape = uDesign > 1.5 ? abs(p.x)*.9+abs(p.y)*.6+abs(p.z) : length(p.xz)*1.4+abs(p.y)*.12;
+      float core = exp(-coreShape*2.6);
+      float shaft = exp(-length(p.xz)*16.)*exp(-abs(p.y)*.35);
+      return (core*12.+shaft*1.8)*(.94+.06*sin(uTime*.55));
+    }
     float vein = sin(p.y*2.3+p.x*.8+sin(p.z*2.0)*.65+uTime*.2);
     float layers = pow(.5+.5*vein,22.)*.16;
     float core = exp(-length(p.xz-vec2(sin(p.y*.7+uTime*.23)*.35,cos(p.y*.4)*.2))*3.8);
@@ -72,12 +81,13 @@ export const crystalFragment = /* glsl */ `
   }
   vec3 traceBand(vec3 entry, vec3 ray, vec3 normal, float ior) {
     vec3 d = refract(ray,normal,1./ior);
-    vec3 p = entry-normal*.001;
+    vec3 p = entry+ d*.002;
     vec3 sum = vec3(0.);
     vec3 throughput = vec3(1.);
     for (int bounce=0; bounce<3; bounce++) {
       vec4 hit = exitFacet(p,d);
-      float lengthInCrystal = min(hit.w,18.);
+      if(hit.w > 1000.) break;
+      float lengthInCrystal = hit.w;
       float stepSize = lengthInCrystal/12.;
       float light = 0.;
       for (int s=0; s<12; s++) {
@@ -85,7 +95,7 @@ export const crystalFragment = /* glsl */ `
       }
       // Beer-Lambert absorption gives real thickness-dependent color.
       throughput *= exp(-vec3(.068,.025,.015)*lengthInCrystal);
-      sum += throughput*mix(vec3(.16,.56,.7),uTint,.45)*light*.12;
+      sum += throughput*mix(vec3(.6,.86,1.),uTint,.15)*light*.12;
       p += d*lengthInCrystal;
       vec3 exiting = refract(d,-hit.xyz,ior);
       float reflection = fresnel(abs(dot(d,hit.xyz)),ior);
@@ -98,7 +108,7 @@ export const crystalFragment = /* glsl */ `
       // Total internal reflection preserves energy rather than sampling a
       // zero direction. Residual energy after the fixed bounce cap is lost.
       d = reflect(d,hit.xyz);
-      p -= hit.xyz*.001;
+      p += d*.002;
     }
     return sum;
   }
@@ -112,10 +122,11 @@ export const crystalFragment = /* glsl */ `
     if (uRefraction < .5) {
       transmission = environment(vWorld,-V);
     } else {
-      transmission = vec3(
-        traceBand(vLocal,ray,localN,1.475).r,
+      if(uDispersion < .00001) transmission = traceBand(vLocal,ray,localN,1.48);
+      else transmission = vec3(
+        traceBand(vLocal,ray,localN,1.48-uDispersion).r,
         traceBand(vLocal,ray,localN,1.48).g,
-        traceBand(vLocal,ray,localN,1.485).b
+        traceBand(vLocal,ray,localN,1.48+uDispersion).b
       );
     }
     float F = fresnel(max(dot(N,V),0.),1.48);
@@ -123,7 +134,7 @@ export const crystalFragment = /* glsl */ `
     vec3 color = mix(transmission,reflected,F);
     vec3 L = normalize(uLight-vWorld);
     float spec = pow(max(dot(reflect(-L,N),V),0.),180.);
-    color += vec3(.8,.94,1.)*spec*3.0;
+    color += vec3(.8,.94,1.)*spec*(uLegacy>.5?3.:.85);
     // Distance to the adjacent plane sharpens real facet junctions rather than
     // outlining every triangulation edge in the convex mesh.
     float edgeDistance = 10.;
@@ -134,7 +145,7 @@ export const crystalFragment = /* glsl */ `
     float edge = 1.-smoothstep(.008,.065,edgeDistance);
     color += mix(vec3(.4,.8,1.),uTint,.3)*edge*(.18+.42*F+uEmphasis*.4);
     float growth = pow(.5+.5*sin(vLocal.y*86.+sin(vLocal.x*4.)*.8),35.);
-    color += vec3(.18,.25,.27)*growth*.065;
+    color += vec3(.18,.25,.27)*growth*.065*uLegacy;
     gl_FragColor = vec4(color,1.);
   }
 `;
@@ -166,11 +177,11 @@ export const backdropFragment = /* glsl */ `
     float a = atan(vWorld.z,vWorld.x);
     float y = vWorld.y;
     float broad = pow(.5+.5*cos(a*3.+uTime*.08),14.);
-    float slit = pow(.5+.5*cos(a*28.+sin(uTime*.1)*.18),160.);
+    float slit = pow(.5+.5*cos(a*6.+sin(uTime*.1)*.18),30.);
     float horizon = exp(-pow((y-5.)*.18,2.));
     float ribbon = exp(-pow((y-8.-sin(a*3.+uTime*.16)*2.5)*1.1,2.));
-    vec3 color = vec3(.012,.028,.044)+uTint*broad*.11*horizon;
-    color += mix(uTint,vec3(.95,.8,.49),.4)*slit*horizon*.85;
+    vec3 color = vec3(.012,.028,.044)+mix(uTint,vec3(.8,.9,1.),.6)*broad*.65*horizon;
+    color += mix(uTint,vec3(.95,.8,.49),.4)*slit*horizon*.25;
     color += uTint*ribbon*.4;
     gl_FragColor = vec4(color,1.);
   }
