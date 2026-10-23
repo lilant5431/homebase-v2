@@ -126,7 +126,7 @@ export default function Auditions({ world = false }: { world?: boolean }) {
   useEffect(() => {
     const previous = document.title;
     document.title = world
-      ? "The Observatory · Homebase living world"
+      ? "Crystal World · Homebase V2.1C"
       : `${identity.name} · Homebase visual auditions`;
     return () => {
       document.title = previous;
@@ -421,7 +421,7 @@ export default function Auditions({ world = false }: { world?: boolean }) {
   );
   return (
     <div
-      className={`audition au-${concept}${quiet ? " au-quiet" : ""}${world ? " au-world" : ""}${immersive ? " world-immersive" : ""}`}
+      className={`audition au-${concept}${quiet ? " au-quiet" : ""}${world ? ` au-world crystal-world world-area-${view}` : ""}${immersive ? " world-immersive" : ""}`}
     >
       <a
         className="au-skip"
@@ -439,6 +439,7 @@ export default function Auditions({ world = false }: { world?: boolean }) {
           area={view}
           emphasis={detail || proposal === "preview"}
           disabled={quiet}
+          centered={immersive}
         />
       ) : (
         <Environment concept={concept} />
@@ -450,12 +451,12 @@ export default function Auditions({ world = false }: { world?: boolean }) {
         {world ? (
           <div className="world-mode-bar">
             <a href="#auditions/meridian">← V2.1A auditions</a>
-            <span>V2.1B / REAL-TIME WORLD</span>
+            <span>V2.1C / CRYSTAL WORLD</span>
             <button
               aria-pressed={immersive}
               onClick={() => setImmersive(!immersive)}
             >
-              {immersive ? "Show workbench" : "Explore the architecture"}
+              {immersive ? "Show workbench" : "Explore the crystal"}
             </button>
           </div>
         ) : (
@@ -502,7 +503,7 @@ export default function Auditions({ world = false }: { world?: boolean }) {
               homebase
               <small>
                 {world
-                  ? "THE OBSERVATORY / V2.1B"
+                  ? "CRYSTAL WORLD / V2.1C"
                   : `${identity.name.toUpperCase()} / V2.1A`}
               </small>
             </span>
@@ -517,22 +518,22 @@ export default function Auditions({ world = false }: { world?: boolean }) {
             <div>
               <span className="au-kicker">
                 {world
-                  ? "A LIVING SPACE FOR YOUR MIND"
+                  ? "A DIFFERENT FACET OF YOUR DAY"
                   : identity.subtitle.toUpperCase()}{" "}
                 <span className="au-title-rule" /> FALL SEMESTER 2026
               </span>
               <h1>
                 {world
                   ? view === "planning"
-                    ? "A little room for possibility."
+                    ? "Find your next possibility."
                     : view === "assignments"
                       ? "Ideas, taking shape."
-                      : "A place for your mind."
+                      : "Time, in a new light."
                   : identity.line}
               </h1>
               <p>
                 {world
-                  ? "Light moves. Ideas settle. Your next chapter comes into focus."
+                  ? "One world. A new perspective on what matters."
                   : identity.description}
               </p>
             </div>
@@ -665,7 +666,10 @@ export default function Auditions({ world = false }: { world?: boolean }) {
               ONLY
             </span>
             <span>
-              {identity.name} / {identity.subtitle} <ArrowDown size={12} />
+              {world
+                ? "Crystal World / Three facets, one place"
+                : `${identity.name} / ${identity.subtitle}`}{" "}
+              <ArrowDown size={12} />
             </span>
           </footer>
         </main>

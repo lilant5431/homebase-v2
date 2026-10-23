@@ -4,6 +4,8 @@ export type WorldInput = {
   area: WorldArea;
   emphasis: boolean;
   reducedMotion: boolean;
+  refraction?: boolean;
+  centered?: boolean;
 };
 export type WorldMetrics = {
   startupMs: number;
@@ -42,8 +44,28 @@ export type WorldFactory = (
   initial?: WorldInput,
 ) => WorldController;
 
+// Unwrapped polar angles travel along the outside of the crystal, never through
+// its solid interior as a Cartesian camera lerp between opposite sides would.
 export const viewpoints = {
-  week: { eye: [17, 8, 27], look: [1, 5, -15] },
-  assignments: { eye: [-12, 6.5, 18], look: [2, 5, -15] },
-  planning: { eye: [4, 6, 9], look: [0, 5, -22] },
+  week: {
+    angle: 0.35,
+    radius: 22.5,
+    height: 7.5,
+    label: "01 / MERIDIAN",
+    description: "The week, held in light.",
+  },
+  assignments: {
+    angle: 2.35,
+    radius: 21,
+    height: 8.7,
+    label: "02 / ARCHIVE",
+    description: "Ideas, taking shape.",
+  },
+  planning: {
+    angle: 4.4,
+    radius: 19.7,
+    height: 6.6,
+    label: "03 / POSSIBLE",
+    description: "Room for what comes next.",
+  },
 } as const;

@@ -1,17 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { startWorldSession } from "./session";
 import { recordWorld } from "./recording";
-import type { WorldArea, WorldMetrics } from "./contract";
+import { viewpoints, type WorldArea, type WorldMetrics } from "./contract";
 import "./world.css";
 
 export default function WorldStage({
   area,
   emphasis,
   disabled,
+  centered,
 }: {
   area: WorldArea;
   emphasis: boolean;
   disabled: boolean;
+  centered: boolean;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const session = useRef<ReturnType<typeof startWorldSession>>(null);
@@ -25,10 +27,23 @@ export default function WorldStage({
       matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
   const [still, setStill] = useState(false);
+  const [straight, setStraight] = useState(false);
   const [recordStatus, setRecordStatus] = useState("");
   const failNext = useRef(false);
-  const latest = useRef({ area, emphasis, reducedMotion: reduced || still });
-  latest.current = { area, emphasis, reducedMotion: reduced || still };
+  const latest = useRef({
+    area,
+    emphasis,
+    reducedMotion: reduced || still,
+    refraction: !straight,
+    centered,
+  });
+  latest.current = {
+    area,
+    emphasis,
+    reducedMotion: reduced || still,
+    refraction: !straight,
+    centered,
+  };
   useEffect(() => {
     const media = matchMedia("(prefers-reduced-motion: reduce)");
     const update = () => setReduced(media.matches);
@@ -70,7 +85,7 @@ export default function WorldStage({
   }, [disabled, attempt]);
   useEffect(() => {
     session.current?.update(latest.current);
-  }, [area, emphasis, reduced, still]);
+  }, [area, emphasis, reduced, still, straight, centered]);
   async function record() {
     if (!canvas.current || recording.current) return;
     let capture: ReturnType<typeof recordWorld> | undefined;
@@ -83,7 +98,7 @@ export default function WorldStage({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "homebase-living-world.webm";
+      a.download = "homebase-crystal-world.webm";
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       setRecordStatus(
@@ -108,7 +123,7 @@ export default function WorldStage({
         )}
       </div>
       <div className="world-caption">
-        <span>MERIDIAN / THE OBSERVATORY</span>
+        <span>{viewpoints[area].label} / CRYSTAL WORLD</span>
         <span>
           {disabled
             ? "GRAPHICS OFF"
@@ -134,7 +149,8 @@ export default function WorldStage({
         </summary>
         <div className="world-instruments">
           <p>
-            Three.js · custom GLSL transmission · 3-band dispersion · HDR bloom
+            Convex facet ray tracing · 3 spectral bands · 3 internal segments ·
+            live 512² × 6 HDR probe
           </p>
           {stats && !failure && !disabled && (
             <dl>
@@ -205,6 +221,15 @@ export default function WorldStage({
           {stats && <p className="world-gpu">{stats.gpu}</p>}
           <div className="world-diagnostic-actions">
             <button
+              aria-pressed={straight}
+              onClick={() => setStraight(!straight)}
+              disabled={!stats || !!failure || disabled}
+            >
+              {straight
+                ? "Restore crystal refraction"
+                : "Compare without refraction"}
+            </button>
+            <button
               aria-pressed={still}
               onClick={() => setStill(!still)}
               disabled={disabled || reduced}
@@ -252,6 +277,16 @@ export default function WorldStage({
           </small>
         </div>
       </details>
+      <div className="crystal-orientation" aria-hidden="true">
+        <span>ONE WORLD / THREE PERSPECTIVES</span>
+        <strong>{viewpoints[area].label}</strong>
+        <p>{viewpoints[area].description}</p>
+        <div>
+          <i className={area === "week" ? "active" : ""} />
+          <i className={area === "assignments" ? "active" : ""} />
+          <i className={area === "planning" ? "active" : ""} />
+        </div>
+      </div>
       {failure && !disabled && (
         <div className="world-failure" role="status">
           <strong>The world is taking a moment.</strong>

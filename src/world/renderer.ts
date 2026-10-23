@@ -3,6 +3,7 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { makeCrystalGeometry } from "./crystalGeometry";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import {
   viewpoints,
@@ -13,7 +14,7 @@ import {
 import {
   crystalFragment,
   floorFragment,
-  hazeFragment,
+  backdropFragment,
   particleFragment,
   particleVertex,
   worldVertex,
@@ -124,246 +125,165 @@ export function createWorld(
     r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     r.toneMapping = T.ACESFilmicToneMapping;
     r.toneMappingExposure = 1.12;
-    r.shadowMap.enabled = true;
-    r.shadowMap.type = T.PCFSoftShadowMap;
-    r.shadowMap.autoUpdate = false;
-    r.shadowMap.needsUpdate = true;
     r.info.autoReset = false;
     const scene = new T.Scene();
-    scene.background = new T.Color("#344c5b");
-    scene.fog = new T.FogExp2("#526d78", 0.0105);
-    const camera = new T.PerspectiveCamera(48, 1, 0.2, 220);
-    camera.position.fromArray(viewpoints.week.eye);
-    const look = new T.Vector3().fromArray(viewpoints.week.look);
-    const eyeTarget = new T.Vector3(),
-      lookTarget = new T.Vector3();
+    scene.background = new T.Color("#06111d");
+    const camera = new T.PerspectiveCamera(43, 1, 0.2, 140);
+    const initialPose = viewpoints[initial.area];
+    let orbitAngle: number = initialPose.angle;
+    let orbitRadius: number = initialPose.radius;
+    let orbitHeight: number = initialPose.height;
+    let compositionOffset = initial.centered ? 0 : 7.6;
+    const look = new T.Vector3();
     const smoothPointer = new T.Vector2();
-    camera.lookAt(look);
-
     const room = own(new RoomEnvironment());
     const pmrem = own(new T.PMREMGenerator(r));
-    const environment = own(pmrem.fromScene(room, 0.05));
+    const environment = own(pmrem.fromScene(room, 0.04));
     scene.environment = environment.texture;
-    scene.environmentIntensity = 0.45;
-    scene.add(new T.HemisphereLight("#c5e6ff", "#5a482e", 1.4));
-    const sun = new T.DirectionalLight("#ffe1a2", 2.5);
-    sun.position.set(-18, 30, -28);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
-    Object.assign(sun.shadow.camera, {
-      left: -35,
-      right: 35,
-      top: 35,
-      bottom: -35,
-      far: 130,
-    });
-    sun.shadow.bias = -0.0005;
-    scene.add(sun);
-    resources.push(sun.shadow);
-    const movingLight = new T.PointLight("#c0efff", 220, 65, 1.6);
+    scene.environmentIntensity = 0.6;
+    scene.add(new T.HemisphereLight("#b2e4ff", "#1a152b", 1.2));
+    const movingLight = new T.PointLight("#c0efff", 320, 65, 1.6);
     movingLight.position.set(6, 8, 4);
     scene.add(movingLight);
-    const farLight = new T.PointLight("#ffd48a", 360, 80, 1.5);
-    farLight.position.set(0, 10, -44);
-    scene.add(farLight);
-
-    const architecture = new T.Group();
-    scene.add(architecture);
-    const stone = own(
-      new T.MeshStandardMaterial({
-        color: "#929384",
-        roughness: 0.64,
-        metalness: 0.12,
-      }),
-    );
-    const darkStone = own(
-      new T.MeshStandardMaterial({
-        color: "#353f3c",
-        roughness: 0.43,
-        metalness: 0.26,
-      }),
-    );
-    const paleStone = own(
-      new T.MeshStandardMaterial({
-        color: "#bab398",
-        roughness: 0.55,
-        metalness: 0.16,
-      }),
-    );
-    const gold = own(
-      new T.MeshStandardMaterial({
-        color: "#bda270",
-        roughness: 0.25,
-        metalness: 0.86,
-      }),
-    );
-    const glow = own(
-      new T.MeshStandardMaterial({
-        color: "#d8edec",
-        emissive: "#bfe7e9",
-        emissiveIntensity: 2.1,
-        roughness: 0.24,
-      }),
-    );
-    const box = own(new T.BoxGeometry(1, 1, 1));
-    const column = own(new T.CylinderGeometry(0.62, 0.83, 10, 24, 1));
-    const torus = own(new T.TorusGeometry(0.9, 0.095, 8, 32));
-    const arch = own(new T.TorusGeometry(12, 0.55, 12, 72, Math.PI));
-    const rib = own(new T.CylinderGeometry(0.048, 0.048, 9.7, 6));
-    function block(
-      material: T.Material,
-      x: number,
-      y: number,
-      z: number,
-      sx: number,
-      sy: number,
-      sz: number,
-    ) {
-      const mesh = new T.Mesh(box, material);
-      mesh.position.set(x, y, z);
-      mesh.scale.set(sx, sy, sz);
-      mesh.castShadow = mesh.receiveShadow = true;
-      architecture.add(mesh);
-      return mesh;
-    }
-    // Twelve layered bays, fluted pillars, capitals, coffered vaults and metal inlays.
-    for (let bay = 0; bay < 12; bay++) {
-      const z = -bay * 10 - 3;
-      const archMesh = new T.Mesh(arch, paleStone);
-      archMesh.position.set(0, 10, z);
-      architecture.add(archMesh);
-      const inset = new T.Mesh(arch, gold);
-      inset.position.set(0, 10, z + 0.62);
-      inset.scale.set(0.976, 0.976, 0.15);
-      architecture.add(inset);
-      for (const side of [-1, 1]) {
-        const x = side * 12;
-        const pillar = new T.Mesh(column, stone);
-        pillar.position.set(x, 5, z);
-        pillar.castShadow = pillar.receiveShadow = true;
-        architecture.add(pillar);
-        block(darkStone, x, 0.28, z, 2.5, 0.55, 2.5);
-        block(paleStone, x, 0.65, z, 2.1, 0.25, 2.1);
-        block(paleStone, x, 10.1, z, 2.5, 0.45, 2.5);
-        block(gold, x, 9.76, z, 1.9, 0.12, 1.9);
-        for (let flute = 0; flute < 12; flute++) {
-          const angle = (flute / 12) * Math.PI * 2;
-          const edge = new T.Mesh(rib, gold);
-          edge.position.set(
-            x + Math.cos(angle) * 0.7,
-            5,
-            z + Math.sin(angle) * 0.7,
-          );
-          architecture.add(edge);
-        }
-        for (const height of [1.1, 9.3]) {
-          const ring = new T.Mesh(torus, gold);
-          ring.rotation.x = Math.PI / 2;
-          ring.position.set(x, height, z);
-          architecture.add(ring);
-        }
-        block(darkStone, side * 15, 6, z - 4, 1.2, 12, 7.8);
-        block(gold, side * 14.33, 6, z - 4, 0.08, 9.5, 6.5);
-        block(darkStone, side * 14.2, 6, z - 4, 0.12, 9.1, 6.2);
-        for (let line = 0; line < 5; line++)
-          block(gold, side * 14.05, 2.3 + line * 1.7, z - 4, 0.07, 0.045, 6.1);
-      }
-      block(gold, 0, 19.9, z, 17, 0.12, 0.2);
-      for (let coffer = 0; coffer < 5; coffer++)
-        block(darkStone, -8 + coffer * 4, 20.1, z - 4, 3.5, 0.28, 6.5);
-      block(glow, 0, 0.02, z - 4, 0.055, 0.025, 9.3);
-      block(gold, -8, 0.015, z - 4, 0.06, 0.02, 9.3);
-      block(gold, 8, 0.015, z - 4, 0.06, 0.02, 9.3);
-    }
+    const rimLight = new T.PointLight("#e9baff", 290, 60, 1.5);
+    rimLight.position.set(-7, 12, -7);
+    scene.add(rimLight);
     const time = { value: 0 };
+    const tint = { value: new T.Color("#8cdeef") };
+    const targetTint = new T.Color();
     const floorMaterial = own(
       new T.ShaderMaterial({
         vertexShader: worldVertex,
         fragmentShader: floorFragment,
-        uniforms: { uTime: time },
+        uniforms: { uTime: time, uTint: tint },
       }),
     );
-    const floor = new T.Mesh(own(new T.PlaneGeometry(180, 220)), floorMaterial);
+    const floor = new T.Mesh(own(new T.PlaneGeometry(100, 100)), floorMaterial);
     floor.rotation.x = -Math.PI / 2;
-    floor.position.set(0, -0.04, -60);
+    floor.position.y = -0.32;
     scene.add(floor);
-    // Far portal gives an unambiguous vanishing point and a scale reference.
-    block(darkStone, 0, 8, -119, 27, 16, 2);
-    block(glow, 0, 8, -117.8, 7, 12, 0.1);
-    for (let step = 0; step < 7; step++)
-      block(
-        paleStone,
-        0,
-        0.14 + step * 0.22,
-        -42 - step * 0.8,
-        9 - step * 0.6,
-        0.28,
-        0.8,
+    const backdrop = new T.Mesh(
+      own(new T.CylinderGeometry(31, 31, 46, 160, 1, true)),
+      own(
+        new T.ShaderMaterial({
+          vertexShader: worldVertex,
+          fragmentShader: backdropFragment,
+          uniforms: { uTime: time, uTint: tint },
+          side: T.BackSide,
+        }),
+      ),
+    );
+    backdrop.position.y = 13;
+    scene.add(backdrop);
+    const metal = own(
+      new T.MeshStandardMaterial({
+        color: "#6e878f",
+        roughness: 0.23,
+        metalness: 0.92,
+      }),
+    );
+    const darkMetal = own(
+      new T.MeshStandardMaterial({
+        color: "#101e2b",
+        roughness: 0.28,
+        metalness: 0.85,
+      }),
+    );
+    const whiteLight = own(
+      new T.MeshBasicMaterial({ color: new T.Color(2.7, 3.8, 4.5) }),
+    );
+    const goldLight = own(
+      new T.MeshBasicMaterial({ color: new T.Color(3, 1.8, 0.65) }),
+    );
+    const plinth = new T.Mesh(
+      own(new T.CylinderGeometry(4.1, 5, 0.28, 6)),
+      darkMetal,
+    );
+    plinth.position.y = -0.15;
+    scene.add(plinth);
+    // Near-field light instruments provide high-contrast, real scene geometry
+    // for refraction. Their bent images are visible through multiple facets.
+    const halos: T.Group[] = [];
+    for (let i = 0; i < 3; i++) {
+      const halo = new T.Group();
+      const radius = 7.1 + i * 0.9;
+      const ring = new T.Mesh(
+        own(new T.TorusGeometry(radius, 0.045, 12, 192)),
+        metal,
       );
-    const portal = new T.Mesh(
-      own(new T.TorusGeometry(4.2, 0.1, 12, 100)),
-      glow,
+      const filament = new T.Mesh(
+        own(new T.TorusGeometry(radius + 0.06, 0.016, 8, 192)),
+        i === 1 ? goldLight : whiteLight,
+      );
+      halo.add(ring, filament);
+      halo.position.set(0, 6.1 + i * 0.4, 0);
+      halo.rotation.set(1.1 + i * 0.44, 0.15 + i * 0.9, 0.3);
+      scene.add(halo);
+      halos.push(halo);
+    }
+    const tickGeometry = own(new T.BoxGeometry(0.018, 0.12, 0.12));
+    for (let i = 0; i < 96; i++) {
+      const a = (i / 96) * Math.PI * 2;
+      const tick = new T.Mesh(tickGeometry, i % 8 === 0 ? whiteLight : metal);
+      tick.position.set(Math.sin(a) * 5.5, 0, Math.cos(a) * 5.5);
+      tick.rotation.y = a;
+      scene.add(tick);
+    }
+    for (const radius of [4.7, 5.7, 10.5]) {
+      const ring = new T.Mesh(
+        own(new T.TorusGeometry(radius, 0.012, 8, 192)),
+        radius === 4.7 ? whiteLight : metal,
+      );
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = -0.15;
+      scene.add(ring);
+    }
+    const cubeTarget = own(
+      new T.WebGLCubeRenderTarget(512, {
+        type: T.HalfFloatType,
+        generateMipmaps: false,
+        minFilter: T.LinearFilter,
+        magFilter: T.LinearFilter,
+      }),
     );
-    portal.position.set(0, 5.8, -48);
-    scene.add(portal);
-
-    const sceneTarget = own(
-      new T.WebGLRenderTarget(1, 1, { type: T.HalfFloatType }),
-    );
+    const probe = new T.CubeCamera(0.1, 100, cubeTarget);
+    probe.position.set(0, 6, 0);
+    const { geometry, planes } = makeCrystalGeometry();
+    own(geometry);
+    const crystalGroup = new T.Group();
+    crystalGroup.position.set(0, 6.2, 0);
+    scene.add(crystalGroup);
     const glass = own(
       new T.ShaderMaterial({
         vertexShader: worldVertex,
         fragmentShader: crystalFragment,
+        defines: { PLANE_COUNT: planes.length },
         uniforms: {
-          uScene: { value: sceneTarget.texture },
-          uResolution: { value: new T.Vector2(1, 1) },
+          uEnvironment: { value: cubeTarget.texture },
+          uPlanes: { value: planes },
+          uWorldMatrix: { value: new T.Matrix4() },
+          uInverseWorld: { value: new T.Matrix4() },
           uTime: time,
-          uEmphasis: { value: 0 },
+          uTint: tint,
           uLight: { value: movingLight.position },
+          uEmphasis: { value: 0 },
+          uRefraction: { value: 1 },
         },
-        side: T.DoubleSide,
+        side: T.FrontSide,
       }),
     );
-    const crystalGroup = new T.Group();
-    scene.add(crystalGroup);
-    const crystalGeometry = own(new T.DodecahedronGeometry(2.6, 0));
-    const edgeGeometry = own(new T.EdgesGeometry(crystalGeometry));
-    const edgeMaterial = own(
-      new T.LineBasicMaterial({
-        color: "#d7f4ff",
-        transparent: true,
-        opacity: 0.46,
-        blending: T.AdditiveBlending,
-      }),
-    );
-    const crystals: T.Group[] = [];
-    for (const [x, y, z, scale] of [
-      [6, 9, 4, 1],
-      [-6.4, 4.1, -11, 0.58],
-      [1.5, 6.8, -25, 0.8],
-      [8, 3, -36, 0.4],
-    ]) {
-      const group = new T.Group();
-      group.position.set(x, y, z);
-      group.scale.set(scale, scale * 1.5, scale);
-      const solid = new T.Mesh(crystalGeometry, glass);
-      group.add(solid, new T.LineSegments(edgeGeometry, edgeMaterial));
-      group.rotation.set(0.2, 0.4, 0.18);
-      group.userData.baseY = y;
-      crystalGroup.add(group);
-      crystals.push(group);
-    }
+    crystalGroup.add(new T.Mesh(geometry, glass));
     const random = (i: number) => {
       const n = Math.sin(i * 127.1 + 17.7) * 43758.5453;
       return n - Math.floor(n);
     };
     const particleGeometry = own(new T.BufferGeometry());
-    const positions = new Float32Array(2200 * 3),
-      seeds = new Float32Array(2200);
-    for (let i = 0; i < 2200; i++) {
-      positions[i * 3] = (random(i + 1) - 0.5) * 35;
+    const positions = new Float32Array(1600 * 3),
+      seeds = new Float32Array(1600);
+    for (let i = 0; i < 1600; i++) {
+      positions[i * 3] = (random(i + 1) - 0.5) * 34;
       positions[i * 3 + 1] = random(i + 3000) * 16;
-      positions[i * 3 + 2] = 8 - random(i + 6000) * 120;
+      positions[i * 3 + 2] = (random(i + 6000) - 0.5) * 34;
       seeds[i] = random(i + 9000);
     }
     particleGeometry.setAttribute(
@@ -386,29 +306,12 @@ export function createWorld(
     );
     dust.frustumCulled = false;
     scene.add(dust);
-    const hazeMaterial = own(
-      new T.ShaderMaterial({
-        vertexShader: worldVertex,
-        fragmentShader: hazeFragment,
-        uniforms: { uTime: time },
-        transparent: true,
-        depthWrite: false,
-        side: T.DoubleSide,
-        blending: T.AdditiveBlending,
-      }),
-    );
-    const hazeGeometry = own(new T.ConeGeometry(5.5, 24, 48, 1, true));
-    for (let i = 0; i < 5; i++) {
-      const beam = new T.Mesh(hazeGeometry, hazeMaterial);
-      beam.position.set(-3, 9, -i * 22 - 4);
-      beam.rotation.z = -0.4;
-      scene.add(beam);
-    }
-
     const composer = own(new EffectComposer(r));
     const renderPass = own(new RenderPass(scene, camera));
     composer.addPass(renderPass);
-    const bloom = own(new UnrealBloomPass(new T.Vector2(1, 1), 0.55, 0.6, 1.0));
+    const bloom = own(
+      new UnrealBloomPass(new T.Vector2(1, 1), 0.4, 0.45, 1.25),
+    );
     composer.addPass(bloom);
     const output = own(new OutputPass());
     composer.addPass(output);
@@ -421,16 +324,26 @@ export function createWorld(
       height = Math.max(1, Math.round(rect.height));
       r.setSize(width, height, false);
       composer.setSize(width, height);
-      const size = r.getDrawingBufferSize(new T.Vector2());
-      sceneTarget.setSize(size.x, size.y);
-      r.setRenderTarget(sceneTarget);
+      r.setRenderTarget(composer.renderTarget1);
       const framebufferStatus = gl!.checkFramebufferStatus(gl!.FRAMEBUFFER);
       r.setRenderTarget(null);
       if (framebufferStatus !== gl!.FRAMEBUFFER_COMPLETE)
         throw new Error(
           "HDR framebuffer allocation failed. The workbench remains available.",
         );
-      glass.uniforms.uResolution.value.copy(size);
+      // Validate all six probe attachments too; capability flags alone do not
+      // establish that allocations succeeded on this GPU.
+      for (let face = 0; face < 6; face++) {
+        r.setRenderTarget(cubeTarget, face);
+        if (
+          gl!.checkFramebufferStatus(gl!.FRAMEBUFFER) !==
+          gl!.FRAMEBUFFER_COMPLETE
+        )
+          throw new Error(
+            "HDR cube probe allocation failed. The workbench remains available.",
+          );
+      }
+      r.setRenderTarget(null);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
       if (compiled && input.reducedMotion) renderFrame();
@@ -486,42 +399,61 @@ export function createWorld(
         }
         time.value = elapsed;
         const pose = viewpoints[input.area];
-        eyeTarget.fromArray(pose.eye);
-        lookTarget.fromArray(pose.look);
-        smoothPointer.lerp(pointer, 1 - Math.exp(-delta * 2));
-        if (!input.reducedMotion) {
-          eyeTarget.x +=
-            smoothPointer.x * 1.3 + Math.sin(elapsed * 0.13) * 0.28;
-          eyeTarget.y +=
-            smoothPointer.y * 0.65 + Math.sin(elapsed * 0.19) * 0.13;
-        }
-        camera.position.lerp(
-          eyeTarget,
-          input.reducedMotion ? 1 : 1 - Math.exp(-delta * 0.85),
+        const ease = input.reducedMotion ? 1 : 1 - Math.exp(-delta * 1.25);
+        orbitAngle += (pose.angle - orbitAngle) * ease;
+        orbitRadius += (pose.radius - orbitRadius) * ease;
+        orbitHeight += (pose.height - orbitHeight) * ease;
+        // A narrow viewport gets the centered sculpture; the HTML then stacks.
+        const offset = input.centered || width < 1000 ? 0 : 7.6;
+        compositionOffset += (offset - compositionOffset) * ease;
+        if (input.reducedMotion) smoothPointer.set(0, 0);
+        else smoothPointer.lerp(pointer, 1 - Math.exp(-delta * 2));
+        const angle =
+          orbitAngle +
+          (input.reducedMotion
+            ? 0
+            : smoothPointer.x * 0.035 + Math.sin(elapsed * 0.12) * 0.012);
+        camera.position.set(
+          Math.sin(angle) * orbitRadius,
+          orbitHeight + smoothPointer.y * 0.35,
+          Math.cos(angle) * orbitRadius,
         );
-        look.lerp(
-          lookTarget,
-          input.reducedMotion ? 1 : 1 - Math.exp(-delta * 0.85),
+        look.set(
+          -Math.cos(angle) * compositionOffset,
+          6.1,
+          Math.sin(angle) * compositionOffset,
         );
         camera.lookAt(look);
         movingLight.position.set(
-          5 + smoothPointer.x * 8 + Math.sin(time.value * 0.3) * 5,
-          8 + smoothPointer.y * 3,
-          3 + Math.cos(time.value * 0.22) * 4,
+          6 + smoothPointer.x * 7 + Math.sin(time.value * 0.3) * 4,
+          9 + smoothPointer.y * 3,
+          5 + Math.cos(time.value * 0.22) * 4,
         );
-        movingLight.color.set(
+        targetTint.set(
           input.area === "planning"
-            ? "#c6b5ff"
+            ? "#c4afff"
             : input.area === "assignments"
-              ? "#a5e9ed"
-              : "#e2eaff",
+              ? "#96efd9"
+              : "#8cdeef",
         );
+        tint.value.lerp(targetTint, input.reducedMotion ? 1 : ease);
         glass.uniforms.uEmphasis.value = input.emphasis ? 1 : 0;
-        crystals.forEach((crystal, i) => {
-          crystal.position.y =
-            crystal.userData.baseY + Math.sin(time.value * 0.4 + i) * 0.24;
-          crystal.rotation.y = 0.4 + time.value * 0.035 + i * 0.6;
-          crystal.rotation.z = 0.18 + Math.sin(time.value * 0.17 + i) * 0.06;
+        glass.uniforms.uRefraction.value = input.refraction === false ? 0 : 1;
+        crystalGroup.position.y = 6.2 + Math.sin(elapsed * 0.38) * 0.13;
+        crystalGroup.rotation.set(
+          Math.sin(elapsed * 0.17) * 0.022,
+          0.22 + Math.sin(elapsed * 0.09) * 0.09,
+          0.08,
+        );
+        crystalGroup.updateMatrixWorld(true);
+        glass.uniforms.uWorldMatrix.value.copy(crystalGroup.matrixWorld);
+        glass.uniforms.uInverseWorld.value
+          .copy(crystalGroup.matrixWorld)
+          .invert();
+        halos.forEach((halo, i) => {
+          halo.rotation.z = 0.3 + elapsed * (i === 1 ? -0.025 : 0.018);
+          halo.rotation.y =
+            0.15 + i * 0.9 + Math.sin(elapsed * 0.11 + i) * 0.08;
         });
         if (
           timer &&
@@ -542,8 +474,9 @@ export function createWorld(
         }
         r.info.reset();
         crystalGroup.visible = false;
-        r.setRenderTarget(sceneTarget);
-        r.render(scene, camera);
+        // Capture all six faces every frame. Exclude the refractor to prevent
+        // texture feedback; its reflection/refraction samples this live probe.
+        probe.update(r, scene);
         crystalGroup.visible = true;
         r.setRenderTarget(null);
         composer.render(delta);
@@ -576,7 +509,8 @@ export function createWorld(
             programs: r.info.programs?.length || 0,
             width: size.x,
             height: size.y,
-            bufferEstimateMB: (size.x * size.y * 8 * 3.917) / 1048576,
+            bufferEstimateMB:
+              (size.x * size.y * 8 * 2.917 + 6 * 512 * 512 * 8) / 1048576,
             gpu,
             frames,
             elapsed,

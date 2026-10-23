@@ -1,19 +1,27 @@
 .audition.au-world {
-  --ink: #f1eddf;
-  --muted: #c0c7c4;
-  --line: #c7dad333;
-  --accent: #d3ebeb;
-  --panel: #15252bcf;
-  --button: #e0dbbd;
-  --button-ink: #1e3034;
-  background: #263b44;
+  --ink: #edf3f0;
+  --muted: #bdced1;
+  --line: #b7d7df25;
+  --accent: #bdebf5;
+  --panel: #101f30eb;
+  --button: #c6e9e9;
+  --button-ink: #132a36;
+  --facet: #bdebf5;
+  background: #06111d;
   min-height: 100vh;
+  color-scheme: dark;
+}
+.audition.au-world.world-area-assignments {
+  --facet: #b8f4d9;
+}
+.audition.au-world.world-area-planning {
+  --facet: #d7c5ff;
 }
 .world-render-surface {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background: #344850;
+  background: #071522;
   pointer-events: none;
 }
 .world-render-surface canvas {
@@ -29,168 +37,190 @@
   position: fixed;
   inset: 0;
   z-index: -1;
-  background:
-    linear-gradient(90deg, #0c1b25a6, transparent 40%, #152a3110),
-    linear-gradient(0deg, #081a2490, transparent 60%);
+  background: linear-gradient(90deg, #06101abb, transparent 65%);
   pointer-events: none;
 }
 .audition.au-world .au-audition-bar {
-  background: #101f27e6;
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid #c6e2e02c;
-  height: 57px;
-  min-height: 57px;
-  padding: 9px 25px;
+  height: 54px;
+  min-height: 54px;
+  padding: 9px 26px;
+  background: #0a1723bf;
+  border-bottom: 1px solid #afcfdf28;
+  backdrop-filter: blur(14px);
   font-size: 10px;
 }
 .world-mode-bar {
   display: flex;
   align-items: center;
-  gap: 28px;
+  gap: 26px;
   font-size: 9px;
   letter-spacing: 1px;
 }
 .world-mode-bar > a {
-  opacity: 0.8;
+  opacity: 0.75;
   letter-spacing: 0;
 }
 .world-mode-bar > span {
-  color: #d2dac7;
+  color: #c7dbe5;
 }
 .world-mode-bar > button {
-  border: 1px solid #acc4cb50;
+  border: 1px solid #b4d4e54d;
   padding: 6px 12px;
   font-size: 10px;
   letter-spacing: 0;
 }
 .world-mode-bar > button[aria-pressed="true"] {
-  background: #d4e3e0;
-  color: #233740;
+  background: #d3ecec;
+  color: #17313c;
 }
 .audition.au-world .au-shell {
-  max-width: 1800px;
-  padding: 0 4% 0 205px;
-  position: relative;
+  max-width: none;
+  padding: 0 30px 0 205px;
 }
 .audition.au-world .au-header {
   position: fixed;
-  top: 57px;
+  top: 54px;
   bottom: 0;
   left: 0;
   width: 170px;
+  padding: 33px 23px;
+  gap: 66px;
   z-index: 4;
-  padding: 35px 21px 25px;
-  gap: 65px;
-  background: linear-gradient(90deg, #0c1a26db, #0c1a2666);
-  border-right: 1px solid #c7dad324;
+  background: linear-gradient(90deg, #091523c9, #09152335);
+  border-right: 1px solid #c2dbe21c;
   backdrop-filter: blur(8px);
 }
 .audition.au-world .au-brand {
   font:
-    24px/1.3 Cambria,
+    25px/1.3 Cambria,
     Georgia,
     serif;
-  gap: 9px;
-  letter-spacing: -0.7px;
+  gap: 8px;
+  letter-spacing: -0.8px;
 }
 .audition.au-world .au-brand small {
   font:
-    7px "Segoe UI",
+    7px/1.8 "Segoe UI",
     sans-serif;
   letter-spacing: 1.1px;
-  line-height: 1.7;
   max-width: 110px;
 }
 .audition.au-world .au-brand svg {
-  width: 22px;
-  filter: drop-shadow(0 0 10px #d3eff299);
+  width: 20px;
+  filter: drop-shadow(0 0 10px #bef4ff88);
 }
 .audition.au-world .au-nav {
-  gap: 15px;
+  gap: 20px;
 }
 .audition.au-world .au-nav button {
   font-size: 11px;
   letter-spacing: 0.2px;
-  color: #d0dcd8;
+  color: #c3d2db;
 }
 .audition.au-world .au-nav button[aria-current] {
-  border-bottom-color: #c7e5e4;
-  color: #fff;
+  color: var(--facet);
+  border-bottom-color: var(--facet);
 }
 .audition.au-world .au-nav-number {
-  color: #b1cbcf;
+  color: var(--facet);
 }
 .audition.au-world .au-profile {
   font-size: 9px;
-  color: #b4c3c7;
+  color: #b5cbd3;
 }
 .audition.au-world .au-profile b {
   border-radius: 0;
-  background: #d1e4e213;
+  background: #bbd9ef15;
 }
 .audition.au-world .au-hero {
-  min-height: 315px;
-  padding: 32px 0 68px;
+  min-height: 203px;
+  padding: 34px 0 27px;
   align-items: flex-start;
 }
 .audition.au-world .au-hero > div:first-child {
-  padding-top: 8px;
-  max-width: 660px;
+  max-width: 690px;
 }
 .audition.au-world .au-hero h1 {
   font:
-    400 clamp(40px, 4.8vw, 69px)/1.08 Cambria,
+    400 clamp(38px, 3.6vw, 58px)/1.08 Cambria,
     Georgia,
     serif;
-  letter-spacing: -2.5px;
-  text-shadow: 0 4px 30px #122b35a0;
-  max-width: 620px;
-  margin: 18px 0 18px;
+  letter-spacing: -2px;
+  text-shadow: 0 4px 30px #050d17;
+  max-width: 660px;
+  margin: 16px 0 15px;
 }
 .audition.au-world .au-hero .au-kicker {
   font-size: 8px;
-  letter-spacing: 1.6px;
-  color: #cfddd9;
+  letter-spacing: 1.8px;
+  color: var(--facet);
 }
 .audition.au-world .au-hero p {
-  color: #e2e9e1;
-  font-size: 12px;
-  text-shadow: 0 2px 10px #132930;
+  color: #d2e0e4;
+  font-size: 11px;
+  text-shadow: 0 2px 10px #071321;
 }
 .audition.au-world .au-hero-index {
   display: none;
 }
 .audition.au-world .au-workflows {
-  grid-template-columns: minmax(0, 1fr) 245px;
-  gap: 23px;
-  margin-right: 0;
-  max-width: 1200px;
+  display: block;
+  width: min(720px, 48vw);
+  max-width: none;
+  position: relative;
+  margin: 0;
+}
+.audition.au-world .au-primary {
+  position: relative;
+}
+/* Readable HTML stays planar. The angled corner, luminous seam and connected
+   rule suggest a display cut from a facet without distorting text or focus. */
+.audition.au-world .au-primary:after {
+  content: "";
+  position: absolute;
+  right: -55px;
+  top: 46px;
+  width: 55px;
+  height: 80px;
+  border-top: 1px solid var(--facet);
+  border-right: 1px solid var(--facet);
+  opacity: 0.4;
+  transform: skewY(-28deg);
+  pointer-events: none;
 }
 .audition.au-world .au-surface {
-  background: linear-gradient(145deg, #15252be8, #172e35c2);
-  border: 1px solid #cae5e145;
+  background: linear-gradient(125deg, #101d2cf0, #102337e6);
+  border: 1px solid #c5e3f13b;
+  border-top-color: var(--facet);
+  border-radius: 1px 22px 1px 1px;
   box-shadow:
-    inset 0 1px 0 #e3faf51c,
-    0 24px 65px #07182559;
-  backdrop-filter: blur(18px);
-  border-radius: 2px;
+    inset 0 1px 0 #d8f7ff13,
+    0 25px 65px #02091255;
+  backdrop-filter: blur(20px);
 }
 .audition.au-world .au-calendar {
-  background: #152830d9;
-  border-top: 1px solid #d2f5f27d;
+  background: linear-gradient(145deg, #101e30ed, #102537e3);
 }
 .audition.au-world .au-section-head {
-  padding: 23px;
+  padding: 21px 24px;
 }
 .audition.au-world .au-section-head h2 {
   font:
-    24px Cambria,
+    26px Cambria,
     Georgia,
     serif;
   margin-top: 8px;
 }
 .audition.au-world .au-day-head {
-  height: 60px;
+  height: 57px;
+}
+.audition.au-world .au-calendar-scroll {
+  max-height: 435px;
+  overflow: auto;
+  scrollbar-color: #547685 #142331;
+}
+.audition.au-world .au-calendar-inner {
+  min-width: 665px;
 }
 .audition.au-world .au-time-grid {
   height: 540px;
@@ -206,136 +236,93 @@
   );
 }
 .audition.au-world .au-today {
-  background: #b2dbe218;
-  border-top: 1px solid #d6f5f4;
+  background: #b2dbe210;
+  border-top: 1px solid var(--facet);
 }
 .audition.au-world .au-calendar-foot {
-  background: #0b202550;
+  background: #07172665;
   font-size: 8px;
-  padding: 15px 19px;
+  padding: 15px 18px;
   gap: 10px;
+  flex-wrap: wrap;
 }
 .audition.au-world .au-event {
   background: var(--event-bg);
-  box-shadow:
-    inset 0 1px 0 #e5f7ff22,
-    2px 3px 12px #030c1530;
   border-radius: 2px;
+  box-shadow:
+    inset 0 1px 0 #e2faff20,
+    2px 4px 12px #020a1230;
 }
 .audition.au-world .au-event strong {
   font-weight: 500;
-  line-height: 1.3;
+  line-height: 1.35;
 }
 .audition.au-world .au-event small {
   font-size: 8px;
 }
 .audition.au-world .au-event:hover {
-  box-shadow: 0 0 24px #b4dceb30;
   background: var(--event-bg);
+  box-shadow: 0 0 22px #a4d8ff33;
 }
 .audition.au-world .lavender {
-  --event-bg: #454758e8;
-  --event-ink: #e3d7f6;
-  --event-border: #c5b9ef56;
+  --event-bg: #46405fe8;
+  --event-ink: #e8ddfa;
+  --event-border: #c3b3ef66;
 }
 .audition.au-world .blue {
-  --event-bg: #304f64eb;
-  --event-ink: #c4e9ff;
-  --event-border: #b5d8ff56;
+  --event-bg: #2d4b64eb;
+  --event-ink: #d3eaff;
+  --event-border: #acd6ff66;
 }
 .audition.au-world .peach {
-  --event-bg: #5b4a3de8;
-  --event-ink: #ffe1bd;
-  --event-border: #e8cdb356;
+  --event-bg: #57483fe8;
+  --event-ink: #ffe3cc;
+  --event-border: #f4c7ab66;
 }
 .audition.au-world .green {
-  --event-bg: #364e46ed;
-  --event-ink: #d5e8b6;
-  --event-border: #bfd0a056;
+  --event-bg: #314e49eb;
+  --event-ink: #ccebd8;
+  --event-border: #b8dfb766;
 }
-.audition.au-world .au-focus {
-  padding: 24px 20px;
-  background: linear-gradient(150deg, #7f969544, #1a3635cd);
-  border-top-color: #c9dcd2;
-}
-.audition.au-world .au-focus-symbol {
+.audition.au-world .au-secondary {
   display: none;
 }
-.audition.au-world .au-focus h2 {
-  font:
-    27px/1.2 Cambria,
-    Georgia,
-    serif;
-}
-.audition.au-world .au-focus p {
-  font-size: 10px;
-  color: #d0dcd6;
+.audition.au-world .au-footer {
+  max-width: 720px;
+  color: #b9d1d8;
+  font-size: 7px;
+  margin-top: 22px;
+  padding-bottom: 24px;
 }
 .audition.au-world .au-action {
-  border-radius: 2px;
+  border-radius: 1px 10px 1px 1px;
   box-shadow:
     inset 0 1px 0 #fff7,
-    0 5px 25px #06182030;
-  font-size: 10px;
-}
-.audition.au-world .au-upcoming {
-  padding: 0 1px;
-}
-.audition.au-world .au-upcoming strong {
-  font-size: 10px;
-}
-.audition.au-world .au-upcoming small {
-  font-size: 9px;
-  color: #d6e3df;
-}
-.audition.au-world .au-upcoming h2 {
-  font:
-    17px Cambria,
-    serif;
-}
-.audition.au-world .au-upcoming > div > span {
-  color: #d0d8cd;
-}
-.audition.au-world .au-upcoming > button {
-  background: #0e212675;
-  padding: 13px 10px;
-  backdrop-filter: blur(10px);
-}
-.audition.au-world .au-footer {
-  padding-bottom: 22px;
-  margin-top: 24px;
-  color: #d5e1dd;
-  font-size: 7px;
+    0 5px 25px #050e1730;
+  font-size: 11px;
 }
 .audition.au-world .au-planning {
-  max-width: none;
   padding: 29px;
+  min-height: 440px;
+  max-width: none;
 }
 .audition.au-world .au-planning h2 {
-  font-size: 34px;
-}
-.audition.au-world .au-detail {
-  background: #172d34f7;
-  backdrop-filter: blur(16px);
-  border-color: #b5dfd75c;
-}
-.audition.au-world .au-context {
-  padding: 25px 22px;
-}
-.audition.au-world .au-context h2 {
-  font-size: 25px;
+  font:
+    35px/1.15 Cambria,
+    serif;
+  max-width: 500px;
 }
 .audition.au-world .au-planning textarea {
-  background: #11212ad9;
-  color: #e9efe3;
-  border-color: #bad9d945;
+  background: #081829d9;
+  color: #e8eef4;
+  border-color: #abc9e84d;
 }
 .audition.au-world .au-proposal {
-  background: #9abbbb08;
-  padding: 21px 15px 10px;
+  background: #abcaff08;
+  padding: 20px 15px 12px;
 }
 .audition.au-world .au-assignments {
-  min-height: 460px;
+  min-height: 440px;
 }
 .audition.au-world .au-assignment {
   padding: 22px 0;
@@ -344,35 +331,83 @@
   background: var(--event-bg);
   color: var(--event-ink);
 }
+.audition.au-world .au-detail {
+  background: #122536f7;
+  backdrop-filter: blur(20px);
+  border-color: #b6daea66;
+  right: 30px;
+  width: min(380px, calc(100vw - 40px));
+}
 .world-caption {
-  position: absolute;
-  left: calc(205px + 4%);
-  right: 4%;
-  top: 315px;
+  position: fixed;
+  right: 35px;
+  top: 89px;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
   font:
     8px/1.6 "Segoe UI",
     sans-serif;
   letter-spacing: 2px;
-  color: #deebe4;
-  text-shadow: 0 2px 15px #102c3a;
+  color: #c1dce7;
   pointer-events: none;
   z-index: 2;
 }
 .world-caption span:first-child {
-  border-left: 1px solid #c4e6e0;
-  padding-left: 15px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #bfdeee66;
 }
 .world-caption span:last-child {
   font:
     8px "Courier New",
     monospace;
   letter-spacing: 1px;
-  background: #0d253877;
+  background: #0c213366;
   padding: 7px 10px;
-  border: 1px solid #d7f4ee22;
+  border: 1px solid #b6deef22;
+}
+.crystal-orientation {
+  position: fixed;
+  bottom: 90px;
+  right: 7%;
+  width: 265px;
+  color: #d4e9ee;
+  text-shadow: 0 2px 20px #061321;
+  pointer-events: none;
+}
+.crystal-orientation > span {
+  font:
+    7px "Segoe UI",
+    sans-serif;
+  letter-spacing: 2px;
+}
+.crystal-orientation strong {
+  display: block;
+  font:
+    30px/1.5 Cambria,
+    Georgia,
+    serif;
+  letter-spacing: -0.7px;
+  color: var(--facet);
+  margin-top: 13px;
+}
+.crystal-orientation p {
+  font-size: 11px;
+}
+.crystal-orientation > div {
+  display: flex;
+  gap: 8px;
+  margin-top: 22px;
+}
+.crystal-orientation i {
+  width: 32px;
+  height: 2px;
+  background: #b6d4ea38;
+}
+.crystal-orientation i.active {
+  background: var(--facet);
+  box-shadow: 0 0 14px var(--facet);
 }
 .world-diagnostics {
   position: fixed;
@@ -380,14 +415,14 @@
   bottom: 16px;
   z-index: 8;
   width: 330px;
-  border: 1px solid #b7d8d444;
-  background: #10202bed;
-  color: #e2eee8;
+  border: 1px solid #b3d2e13d;
+  background: #0b1b2bf2;
+  color: #e1edf2;
   backdrop-filter: blur(16px);
   font:
     10px/1.6 "Segoe UI",
     sans-serif;
-  box-shadow: 0 10px 30px #06122250;
+  box-shadow: 0 10px 30px #030a164d;
 }
 .world-diagnostics summary {
   cursor: pointer;
@@ -399,7 +434,7 @@
 .world-diagnostics summary > span {
   float: right;
   font: 10px monospace;
-  color: #c1e3dc;
+  color: #c3e6ef;
 }
 .world-instruments {
   padding: 0 15px 14px;
@@ -408,7 +443,7 @@
 }
 .world-instruments > p {
   font-size: 10px;
-  color: #b5cbcd;
+  color: #b5ccd9;
   margin-bottom: 12px;
 }
 .world-instruments dl {
@@ -419,10 +454,10 @@
   justify-content: space-between;
   gap: 15px;
   padding: 6px 0;
-  border-top: 1px solid #b7d8d422;
+  border-top: 1px solid #b6cfe122;
 }
 .world-instruments dt {
-  color: #c0d2d3;
+  color: #c1d2df;
   font-size: 9px;
 }
 .world-instruments dd {
@@ -432,127 +467,90 @@
     9px/1.8 "Courier New",
     monospace;
 }
-.world-gpu {
-  font:
-    8px/1.5 "Courier New",
-    monospace !important;
-  margin-top: 13px !important;
-  overflow-wrap: anywhere;
-}
 .world-diagnostic-actions {
   display: flex;
-  gap: 7px;
   flex-wrap: wrap;
-  margin: 14px 0;
+  gap: 7px;
+  margin: 12px 0;
 }
-.world-diagnostic-actions button,
+.audition.au-world .world-diagnostic-actions button,
 .world-failure button {
-  border: 1px solid #bedfd15c !important;
-  background: #a2c9c114 !important;
-  padding: 7px 10px;
-  font-size: 9px !important;
-  color: #e8f4e7 !important;
-  border-radius: 2px;
-}
-.world-instruments > small {
-  font-size: 8px;
-  color: #adc0c4;
-  line-height: 1.7;
-}
-.world-instruments p[role="status"] {
-  margin: 0 0 10px;
   font-size: 10px;
-  color: #d8e5bc;
+  padding: 7px 10px;
+  border: 1px solid #c5dfed55;
+  background: #cee2eb0d;
+}
+.audition.au-world .world-diagnostic-actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.world-instruments small {
+  font-size: 8px;
+  color: #a7bbc8;
+}
+.world-gpu {
+  font: 8px/1.5 monospace;
+  overflow-wrap: anywhere;
+  margin-top: 12px;
 }
 .world-failure {
-  position: fixed;
-  top: 75px;
-  right: 25px;
-  width: min(520px, calc(100vw - 40px));
-  margin: 0;
-  background: #122a31ed;
-  border: 1px solid #d2d2ab70;
-  color: #e7e9d9;
-  padding: 15px 20px;
-  font-size: 11px;
-  z-index: 10;
+  position: relative;
+  margin: 18px 30px 0 205px;
+  padding: 16px 20px;
+  border: 1px solid #c5a86b;
+  background: #192437f2;
+  color: #f8ead2;
+  font-size: 12px;
   max-width: 700px;
+  z-index: 3;
 }
 .world-failure p {
   margin: 6px 0 12px;
-  color: #c3d0c9;
 }
 .world-failure span {
   display: block;
   margin-top: 10px;
   font-size: 10px;
 }
-.world-loading {
-  position: absolute;
-  top: 260px;
-  left: 240px;
-  font-size: 10px;
-  color: #e0ebe7;
-}
-.world-immersive .au-workflows,
-.world-immersive .au-footer {
+.audition.au-world.world-immersive .au-workflows,
+.audition.au-world.world-immersive .au-footer {
   display: none;
 }
-.world-immersive .au-hero {
+.audition.au-world.world-immersive .au-hero {
   pointer-events: none;
-  min-height: calc(100vh - 70px);
+  min-height: calc(100vh - 54px);
 }
-.world-immersive .world-caption {
-  top: auto;
-  position: fixed;
-  bottom: 70px;
+.audition.au-world.world-immersive .au-hero > div:first-child {
+  max-width: 400px;
 }
-.world-immersive .au-hero > div:first-child {
-  max-width: 750px;
-}
-.world-immersive .au-hero h1 {
-  font-size: clamp(45px, 5.3vw, 80px);
-  max-width: 750px;
+.audition.au-world.world-immersive .au-hero h1 {
+  font-size: 57px;
+  max-width: 400px;
 }
 .world-immersive .au-detail {
   display: none;
 }
-@media (min-width: 1550px) {
+@media (min-width: 1900px) {
   .audition.au-world .au-workflows {
-    grid-template-columns: minmax(0, 1fr) 285px;
-    max-width: 1430px;
+    width: 800px;
   }
   .audition.au-world .au-hero {
-    min-height: 370px;
+    min-height: 240px;
   }
-  .world-caption {
-    top: 370px;
-  }
-  .audition.au-world .au-time-grid {
-    height: 540px;
-  }
-  .audition.au-world .au-times > span {
-    height: 60px;
-  }
-  .audition.au-world .au-days {
-    background: repeating-linear-gradient(
-      to bottom,
-      transparent 0 59px,
-      var(--line) 59px 60px
-    );
+  .audition.au-world .au-calendar-scroll {
+    max-height: 530px;
   }
 }
 @media (max-width: 1100px) {
-  .audition.au-world .au-shell {
-    padding-left: 160px;
-    padding-right: 24px;
-  }
   .audition.au-world .au-header {
-    width: 140px;
-    padding: 32px 15px;
+    width: 145px;
+    padding: 30px 15px;
+  }
+  .audition.au-world .au-shell {
+    padding-left: 170px;
   }
   .audition.au-world .au-brand {
-    font-size: 20px;
+    font-size: 21px;
   }
   .audition.au-world .au-brand svg {
     display: none;
@@ -561,19 +559,14 @@
     font-size: 10px;
     gap: 8px;
   }
-  .audition.au-world .au-workflows {
-    grid-template-columns: minmax(0, 1fr) 220px;
-    gap: 17px;
-  }
-  .world-caption {
-    left: 185px;
-    right: 24px;
-  }
   .world-mode-bar {
     gap: 12px;
   }
   .world-mode-bar > span {
     display: none;
+  }
+  .crystal-orientation {
+    right: 30px;
   }
 }
 @media (max-width: 850px) {
@@ -583,7 +576,6 @@
   .audition.au-world .au-header {
     position: relative;
     width: auto;
-    left: auto;
     top: 0;
     bottom: auto;
     flex-direction: row;
@@ -596,73 +588,57 @@
   .audition.au-world .au-nav {
     flex-direction: row;
     width: 100%;
+    gap: 16px;
   }
   .audition.au-world .au-hero {
-    min-height: 240px;
-    padding: 25px 0 75px;
+    min-height: 330px;
+    padding: 20px 0 45px;
   }
   .audition.au-world .au-hero h1 {
-    font-size: 44px;
+    font-size: 40px;
+    max-width: 400px;
+  }
+  .audition.au-world .au-hero .au-kicker {
+    font-size: 7px;
   }
   .audition.au-world .au-workflows {
-    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+  .audition.au-world .au-primary:after {
+    display: none;
   }
   .world-caption {
-    top: 385px;
-    left: 18px;
+    top: 155px;
     right: 18px;
   }
-  .world-caption span:last-child {
-    font-size: 7px;
-    max-width: 130px;
+  .world-caption span:first-child {
+    display: none;
   }
-  .audition.au-world .au-time-grid {
-    height: 540px;
-  }
-  .audition.au-world .au-times > span {
-    height: 60px;
-  }
-  .audition.au-world .au-days {
-    background: repeating-linear-gradient(
-      to bottom,
-      transparent 0 59px,
-      var(--line) 59px 60px
-    );
+  .crystal-orientation {
+    display: none;
   }
   .world-failure {
-    margin: 0;
-    right: 18px;
+    margin: 0 18px 20px;
   }
   .world-mode-bar > a {
     display: none;
-  }
-  .world-diagnostics {
-    width: min(330px, calc(100vw - 28px));
-    right: 14px;
   }
   .world-mode-bar button {
     font-size: 9px;
   }
   .audition.au-world .au-audition-bar {
     padding: 10px 15px;
-    height: auto;
     gap: 10px;
   }
   .audition.au-world .au-performance {
     margin-left: 0;
   }
-  .audition.au-world .au-secondary {
-    display: flex;
+  .world-diagnostics {
+    width: min(330px, calc(100vw - 28px));
+    right: 14px;
   }
-  .world-immersive .au-hero {
-    min-height: calc(100vh - 200px);
-  }
-  .world-immersive .au-hero h1 {
-    font-size: 46px;
-  }
-  .world-loading {
-    top: 330px;
-    left: 25px;
+  .audition.au-world.world-immersive .au-hero h1 {
+    font-size: 40px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

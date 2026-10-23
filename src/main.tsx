@@ -355,12 +355,10 @@ function Entry() {
     window.addEventListener("hashchange", update);
     return () => window.removeEventListener("hashchange", update);
   }, []);
-  return route.startsWith("#auditions") || route === "#world" ? (
+  const world = route === "#world" || route === "#crystal";
+  return route.startsWith("#auditions") || world ? (
     <Suspense fallback={<p role="status">Opening visual auditions…</p>}>
-      <Auditions
-        key={route === "#world" ? "world" : "auditions"}
-        world={route === "#world"}
-      />
+      <Auditions key={world ? "world" : "auditions"} world={world} />
     </Suspense>
   ) : (
     <>
@@ -383,7 +381,7 @@ function Entry() {
         Explore visual auditions ↗
       </a>
       <a
-        href="#world"
+        href="#crystal"
         style={{
           position: "fixed",
           bottom: 8,
@@ -397,7 +395,7 @@ function Entry() {
           borderRadius: 4,
         }}
       >
-        Enter the living world ↗
+        Enter the crystal world ↗
       </a>
     </>
   );
