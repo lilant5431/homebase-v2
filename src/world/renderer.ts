@@ -1,4 +1,5 @@
 import * as T from "three";
+import { lumenDrive } from "./lumenDrive";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
@@ -7,13 +8,14 @@ import { makeCrystalGeometry } from "./crystalGeometry";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import {
   viewpoints,
-  comparisonOffset,
   type WorldController,
   type WorldHooks,
   type WorldInput,
 } from "./contract";
 import {
   crystalFragment,
+  beaconFragment,
+  resonanceFragment,
   floorFragment,
   backdropFragment,
   particleFragment,
@@ -136,6 +138,7 @@ export function createWorld(
     let orbitHeight: number = initialPose.height;
     let compositionOffset = initial.centered ? 0 : 7.6;
     const look = new T.Vector3();
+    let lookHeight = initial.centered ? 8 : 6.1;
     const smoothPointer = new T.Vector2();
     const room = own(new RoomEnvironment());
     const pmrem = own(new T.PMREMGenerator(r));
@@ -152,11 +155,24 @@ export function createWorld(
     const time = { value: 0 };
     const tint = { value: new T.Color("#8cdeef") };
     const targetTint = new T.Color();
+    const circuit = {
+      uLiving: { value: 1 },
+      uEnergy: { value: 1 },
+      uPhase: { value: 0 },
+      uBeacon: { value: 1 },
+      uBeamWidth: { value: 0.55 },
+    };
+    const common = { uTime: time, uTint: tint, ...circuit };
+    const sourceLight = new T.PointLight("#a7e9ff", 100, 30, 2);
+    const pedestalLight = new T.PointLight("#b5ecff", 60, 22, 2);
+    const crownLight = new T.PointLight("#b5ecff", 30, 25, 2);
+    scene.add(sourceLight, pedestalLight, crownLight);
+
     const floorMaterial = own(
       new T.ShaderMaterial({
         vertexShader: worldVertex,
         fragmentShader: floorFragment,
-        uniforms: { uTime: time, uTint: tint },
+        uniforms: common,
       }),
     );
     const floor = new T.Mesh(own(new T.PlaneGeometry(100, 100)), floorMaterial);
@@ -169,7 +185,7 @@ export function createWorld(
         new T.ShaderMaterial({
           vertexShader: worldVertex,
           fragmentShader: backdropFragment,
-          uniforms: { uTime: time, uTint: tint },
+          uniforms: common,
           side: T.BackSide,
         }),
       ),
@@ -204,6 +220,15 @@ export function createWorld(
     scene.add(plinth);
     // Near-field light instruments provide high-contrast, real scene geometry
     // for refraction. Their bent images are visible through multiple facets.
+    const resonance = own(
+      new T.ShaderMaterial({
+        vertexShader: worldVertex,
+        fragmentShader: resonanceFragment,
+        uniforms: common,
+      }),
+    );
+    const collectorGeometry = own(new T.SphereGeometry(0.075, 12, 8));
+    const collectors: T.Mesh[] = [];
     const halos: T.Group[] = [];
     for (let i = 0; i < 3; i++) {
       const halo = new T.Group();
@@ -217,6 +242,18 @@ export function createWorld(
         i === 1 ? goldLight : whiteLight,
       );
       halo.add(ring, filament);
+      for (let k = 0; k < 3; k++) {
+        const collector = new T.Mesh(collectorGeometry, resonance);
+        const a = (k * Math.PI * 2) / 3;
+        collector.position.set(
+          Math.cos(a) * (radius + 0.06),
+          Math.sin(a) * (radius + 0.06),
+          0,
+        );
+        halo.add(collector);
+        collectors.push(collector);
+      }
+      filament.userData.originalMaterial = filament.material;
       halo.position.set(0, 6.1 + i * 0.4, 0);
       halo.rotation.set(1.1 + i * 0.44, 0.15 + i * 0.9, 0.3);
       scene.add(halo);
@@ -230,11 +267,14 @@ export function createWorld(
       tick.rotation.y = a;
       scene.add(tick);
     }
+    const receiverRings: T.Mesh[] = [];
     for (const radius of [4.7, 5.7, 10.5]) {
       const ring = new T.Mesh(
         own(new T.TorusGeometry(radius, 0.012, 8, 192)),
         radius === 4.7 ? whiteLight : metal,
       );
+      ring.userData.originalMaterial = ring.material;
+      receiverRings.push(ring);
       ring.rotation.x = Math.PI / 2;
       ring.position.y = -0.15;
       scene.add(ring);
@@ -249,18 +289,9 @@ export function createWorld(
     );
     const probe = new T.CubeCamera(0.1, 100, cubeTarget);
     probe.position.set(0, 6, 0);
-    const legacyTarget = own(
-      new T.WebGLCubeRenderTarget(512, {
-        type: T.HalfFloatType,
-        minFilter: T.LinearFilter,
-        generateMipmaps: false,
-      }),
-    );
-    const legacyProbe = new T.CubeCamera(0.1, 100, legacyTarget);
-    legacyProbe.position.copy(probe.position);
     const crystalGroup = new T.Group();
     scene.add(crystalGroup);
-    const gems = (["original", "lumen", "vesper"] as const).map((design, i) => {
+    const gems = (["lumen"] as const).map((design) => {
       const { geometry, planes } = makeCrystalGeometry(design);
       own(geometry);
       const glass = own(
@@ -270,19 +301,19 @@ export function createWorld(
           defines: { PLANE_COUNT: planes.length },
           uniforms: {
             uEnvironment: {
-              value: i === 0 ? legacyTarget.texture : cubeTarget.texture,
+              value: cubeTarget.texture,
             },
             uPlanes: { value: planes },
             uWorldMatrix: { value: new T.Matrix4() },
             uInverseWorld: { value: new T.Matrix4() },
-            uTime: time,
+            ...common,
             uTint: tint,
             uLight: { value: movingLight.position },
             uEmphasis: { value: 0 },
             uRefraction: { value: 1 },
             uDispersion: { value: 0 },
-            uLegacy: { value: i === 0 ? 1 : 0 },
-            uDesign: { value: i },
+            uLegacy: { value: 0 },
+            uDesign: { value: 1 },
           },
           side: T.FrontSide,
         }),
@@ -315,7 +346,7 @@ export function createWorld(
         new T.ShaderMaterial({
           vertexShader: particleVertex,
           fragmentShader: particleFragment,
-          uniforms: { uTime: time, uPixelRatio: { value: r.getPixelRatio() } },
+          uniforms: { ...common, uPixelRatio: { value: r.getPixelRatio() } },
           transparent: true,
           depthWrite: false,
           blending: T.AdditiveBlending,
@@ -324,6 +355,26 @@ export function createWorld(
     );
     dust.frustumCulled = false;
     scene.add(dust);
+    const beamMaterial = own(
+      new T.ShaderMaterial({
+        vertexShader: worldVertex,
+        fragmentShader: beaconFragment,
+        uniforms: { ...common, uInverseBeam: { value: new T.Matrix4() } },
+        transparent: true,
+        depthWrite: false,
+        side: T.BackSide,
+        premultipliedAlpha: true,
+      }),
+    );
+    const beam = new T.Mesh(
+      own(new T.CylinderGeometry(3.6, 3.6, 28, 64, 1, false)),
+      beamMaterial,
+    );
+    beam.frustumCulled = false;
+    const beamAxis = new T.Vector3(),
+      beamOrigin = new T.Vector3();
+    const up = new T.Vector3(0, 1, 0);
+    scene.add(beam);
     const composer = own(new EffectComposer(r));
     const renderPass = own(new RenderPass(scene, camera));
     composer.addPass(renderPass);
@@ -351,7 +402,7 @@ export function createWorld(
         );
       // Validate all six probe attachments too; capability flags alone do not
       // establish that allocations succeeded on this GPU.
-      for (const target of [cubeTarget, legacyTarget])
+      for (const target of [cubeTarget])
         for (let face = 0; face < 6; face++) {
           r.setRenderTarget(target, face);
           if (
@@ -420,11 +471,12 @@ export function createWorld(
         const pose = viewpoints[input.area];
         const ease = input.reducedMotion ? 1 : 1 - Math.exp(-delta * 1.25);
         orbitAngle += (pose.angle - orbitAngle) * ease;
-        orbitRadius += (pose.radius - orbitRadius) * ease;
+        orbitRadius +=
+          (pose.radius * (input.centered ? 1.22 : 1) - orbitRadius) * ease;
+        lookHeight += ((input.centered ? 8 : 6.1) - lookHeight) * ease;
         orbitHeight += (pose.height - orbitHeight) * ease;
         // A narrow viewport gets the centered sculpture; the HTML then stacks.
-        const offset =
-          input.comparison || input.centered || width < 1000 ? 0 : 7.6;
+        const offset = input.centered || width < 1000 ? 0 : 7.6;
         compositionOffset += (offset - compositionOffset) * ease;
         if (input.reducedMotion) smoothPointer.set(0, 0);
         else smoothPointer.lerp(pointer, 1 - Math.exp(-delta * 2));
@@ -441,7 +493,7 @@ export function createWorld(
         );
         look.set(
           -Math.cos(angle) * compositionOffset,
-          6.1,
+          lookHeight,
           Math.sin(angle) * compositionOffset,
         );
         camera.lookAt(look);
@@ -458,12 +510,14 @@ export function createWorld(
               : "#8cdeef",
         );
         tint.value.lerp(targetTint, input.reducedMotion ? 1 : ease);
-        gems.forEach(({ design, mesh, glass }, i) => {
-          mesh.visible =
-            !!input.comparison || design === (input.design || "lumen");
-          const [x, z] = input.comparison ? comparisonOffset(i, angle) : [0, 0];
-          mesh.position.set(x, 6.2 + Math.sin(elapsed * 0.38) * 0.08, z);
-          mesh.scale.setScalar(input.comparison ? 0.62 : 1);
+        const drive = lumenDrive(input, elapsed, smoothPointer.length());
+        circuit.uLiving.value = drive.living;
+        circuit.uEnergy.value = drive.energy;
+        circuit.uPhase.value = drive.phase;
+        circuit.uBeacon.value = drive.beacon ? 1 : 0;
+        circuit.uBeamWidth.value = drive.width;
+        gems.forEach(({ mesh, glass }) => {
+          mesh.position.set(0, 6.2 + Math.sin(elapsed * 0.38) * 0.08, 0);
           mesh.rotation.set(
             Math.sin(elapsed * 0.17) * 0.012,
             0.22 + Math.sin(elapsed * 0.09) * 0.04,
@@ -474,14 +528,82 @@ export function createWorld(
           glass.uniforms.uInverseWorld.value.copy(mesh.matrixWorld).invert();
           glass.uniforms.uEmphasis.value = input.emphasis ? 1 : 0;
           glass.uniforms.uRefraction.value = input.refraction === false ? 0 : 1;
-          glass.uniforms.uDispersion.value =
-            input.dispersion ?? (i === 0 ? 0.005 : 0);
+          glass.uniforms.uDispersion.value = input.dispersion ?? 0;
         });
+        const gem = gems[0].mesh;
+        beamOrigin.set(0, 6.3, 0).applyMatrix4(gem.matrixWorld);
+        beamAxis.copy(up).transformDirection(gem.matrixWorld);
+        beam.position.copy(beamOrigin).addScaledVector(beamAxis, 14);
+        beam.quaternion.setFromUnitVectors(up, beamAxis);
+        beam.updateMatrixWorld(true);
+        beamMaterial.uniforms.uInverseBeam.value
+          .copy(beam.matrixWorld)
+          .invert();
+        beam.visible = drive.beacon;
+        sourceLight.position.copy(gem.position);
+        pedestalLight.position.set(0, 2.4, 0);
+        crownLight.position.copy(beamOrigin).addScaledVector(beamAxis, 2);
+        for (const light of [sourceLight, pedestalLight, crownLight]) {
+          light.color.copy(tint.value);
+          light.visible = !!drive.living;
+        }
+        sourceLight.intensity = 80 * drive.energy;
+        pedestalLight.intensity = 35 * drive.energy;
+        crownLight.intensity = 24 * drive.energy;
+        movingLight.intensity = drive.living ? 90 + drive.energy * 35 : 320;
+        darkMetal.roughness = drive.living ? 0.6 : 0.28;
+        darkMetal.metalness = drive.living ? 0.25 : 0.85;
+        if (drive.living)
+          whiteLight.color
+            .copy(tint.value)
+            .multiplyScalar(0.4 + drive.energy * 0.55);
+        else whiteLight.color.setRGB(0.9, 1.4, 1.8);
         halos.forEach((halo, i) => {
-          halo.rotation.z = 0.3 + elapsed * (i === 1 ? -0.025 : 0.018);
-          halo.rotation.y =
-            0.15 + i * 0.9 + Math.sin(elapsed * 0.11 + i) * 0.08;
+          const filament = halo.children[1] as T.Mesh;
+          filament.material = drive.living
+            ? resonance
+            : filament.userData.originalMaterial;
+          if (drive.living) {
+            if (i === 2) {
+              halo.scale.setScalar(0.32);
+              halo.position.copy(beamOrigin).addScaledVector(beamAxis, 0.2);
+              halo.quaternion.setFromUnitVectors(
+                new T.Vector3(0, 0, 1),
+                beamAxis,
+              );
+              halo.rotateZ(drive.phase * 0.12);
+            } else {
+              halo.scale.setScalar(i === 0 ? 0.88 : 0.85);
+              halo.position.set(
+                0,
+                gem.position.y +
+                  (i === 0 ? -0.4 : 0.5) +
+                  Math.sin(drive.phase) * 0.06,
+                0,
+              );
+              halo.rotation.set(
+                Math.PI / 2 + (i === 0 ? -0.12 : 0.33),
+                0,
+                drive.phase * (i === 0 ? 0.045 : -0.035),
+              );
+            }
+          } else {
+            halo.scale.setScalar(1);
+            halo.position.set(0, 6.1 + i * 0.4, 0);
+            halo.rotation.set(
+              1.1 + i * 0.44,
+              0.15 + i * 0.9 + Math.sin(elapsed * 0.11 + i) * 0.08,
+              0.3 + elapsed * (i === 1 ? -0.025 : 0.018),
+            );
+          }
         });
+        collectors.forEach((node) => (node.visible = !!drive.living));
+        receiverRings.forEach(
+          (ring) =>
+            (ring.material = drive.living
+              ? resonance
+              : ring.userData.originalMaterial),
+        );
         if (
           timer &&
           pendingQuery &&
@@ -504,8 +626,7 @@ export function createWorld(
         // Capture all six faces every frame. Exclude the refractor to prevent
         // texture feedback; its reflection/refraction samples this live probe.
         probe.update(r, scene);
-        if (input.comparison || input.design === "original")
-          legacyProbe.update(r, scene);
+
         crystalGroup.visible = true;
         r.setRenderTarget(null);
         composer.render(delta);
@@ -539,9 +660,7 @@ export function createWorld(
             width: size.x,
             height: size.y,
             bufferEstimateMB:
-              (size.x * size.y * 8 * 2.917 +
-                (6 * 1024 * 1024 * 8 * 4) / 3 +
-                6 * 512 * 512 * 8) /
+              (size.x * size.y * 8 * 2.917 + (6 * 1024 * 1024 * 8 * 4) / 3) /
               1048576,
             gpu,
             frames,

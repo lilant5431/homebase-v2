@@ -26,10 +26,10 @@ export default function WorldStage({
       matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
   const [still, setStill] = useState(false);
-  const [design, setDesign] = useState<"original" | "lumen" | "vesper">(
-    "lumen",
-  );
-  const [comparison, setComparison] = useState(false);
+  const [living, setLiving] = useState(true);
+  const [beacon, setBeacon] = useState(true);
+  const [power, setPower] = useState(1);
+  const [beamWidth, setBeamWidth] = useState(0.55);
   const [dispersion, setDispersion] = useState(0);
   const [orbit, setOrbit] = useState(0);
   const [elevation, setElevation] = useState(0);
@@ -42,8 +42,10 @@ export default function WorldStage({
     reducedMotion: reduced || still,
     refraction: !straight,
     centered,
-    design,
-    comparison,
+    living,
+    beacon,
+    power,
+    beamWidth,
     dispersion,
     orbit,
     elevation,
@@ -54,8 +56,10 @@ export default function WorldStage({
     reducedMotion: reduced || still,
     refraction: !straight,
     centered,
-    design,
-    comparison,
+    living,
+    beacon,
+    power,
+    beamWidth,
     dispersion,
     orbit,
     elevation,
@@ -108,8 +112,10 @@ export default function WorldStage({
     still,
     straight,
     centered,
-    design,
-    comparison,
+    living,
+    beacon,
+    power,
+    beamWidth,
     dispersion,
     orbit,
     elevation,
@@ -126,7 +132,7 @@ export default function WorldStage({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "homebase-gemstone-world.webm";
+      a.download = "homebase-lumen-world.webm";
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       setRecordStatus(
@@ -152,38 +158,57 @@ export default function WorldStage({
       </div>
       <details
         className="gem-lab"
-        data-comparison={comparison}
+        data-comparison={false}
         open
-        aria-label="Gemstone comparison controls"
+        aria-label="Lumen environment controls"
       >
-        <summary>Gemstone atelier / controls</summary>
-        <span className="au-kicker">V2.1D / GEMSTONE ATELIER</span>
-        <div className="gem-options" role="group" aria-label="Gemstone design">
-          {(
-            [
-              ["original", "00 / Original cut"],
-              ["lumen", "01 / Lumen"],
-              ["vesper", "02 / Vesper"],
-            ] as const
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              aria-pressed={design === key}
-              onClick={() => {
-                setDesign(key);
-                setComparison(false);
-              }}
-            >
-              {label}
-            </button>
-          ))}
-          <button
-            aria-pressed={comparison}
-            onClick={() => setComparison(!comparison)}
-          >
-            Side by side
+        <summary>Lumen / light chamber</summary>
+        <span className="au-kicker">V2.1E / LIVING LUMEN</span>
+        <div
+          className="gem-options"
+          role="group"
+          aria-label="Environment comparison"
+        >
+          <button aria-pressed={!living} onClick={() => setLiving(false)}>
+            V2.1D baseline
+          </button>
+          <button aria-pressed={living} onClick={() => setLiving(true)}>
+            Living environment
           </button>
         </div>
+        <button
+          aria-pressed={beacon}
+          onClick={() => setBeacon(!beacon)}
+          disabled={!living}
+        >
+          {beacon ? "Beacon on" : "Beacon off"}
+        </button>
+        <label>
+          Radiant power{" "}
+          <input
+            aria-label="Radiant power"
+            type="range"
+            min={0.3}
+            max={1.8}
+            step={0.05}
+            value={power}
+            onChange={(e) => setPower(Number(e.target.value))}
+            disabled={!living}
+          />
+        </label>
+        <label>
+          Beacon focus{" "}
+          <input
+            aria-label="Beacon focus"
+            type="range"
+            min={0.25}
+            max={1.1}
+            step={0.05}
+            value={beamWidth}
+            onChange={(e) => setBeamWidth(Number(e.target.value))}
+            disabled={!living}
+          />
+        </label>
         <label>
           Dispersion{" "}
           <select
@@ -255,13 +280,9 @@ export default function WorldStage({
           Reset inspection
         </button>
         <span>
-          {comparison
-            ? "LEFT: V2.1C · CENTER: LUMEN · RIGHT: VESPER"
-            : design === "lumen"
-              ? "LUMEN / precision lantern"
-              : design === "vesper"
-                ? "VESPER / angular heart"
-                : "Original cut in shared lighting; legacy dispersion reproduces the RGB split"}
+          {living
+            ? "LUMEN / focused core, atmospheric beacon and resonant environment"
+            : "V2.1D Lumen / same cut, camera, exposure and bloom"}
         </span>
       </details>
       <div className="world-caption">
@@ -293,7 +314,8 @@ export default function WorldStage({
           <p>
             Convex facet tracing ·{" "}
             {dispersion === 0 ? "achromatic" : "3 spectral bands"} · 3 internal
-            segments · filtered 1024² probe / original-cut 512² probe
+            segments · filtered 1024² probe · analytic spine / 40-step
+            atmosphere
           </p>
           {stats && !failure && !disabled && (
             <dl>

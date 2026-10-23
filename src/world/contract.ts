@@ -11,6 +11,10 @@ export type WorldInput = {
   dispersion?: number;
   orbit?: number;
   elevation?: number;
+  living?: boolean;
+  beacon?: boolean;
+  power?: number;
+  beamWidth?: number;
 };
 export type WorldMetrics = {
   startupMs: number;

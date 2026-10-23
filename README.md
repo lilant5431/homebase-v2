@@ -1,5 +1,7 @@
 # Homebase V2
 
+Experimental [V2.1E Living Lumen demo and visual evidence](docs/lumen/README.md): run the app and open `/#crystal`.
+
 A responsive academic planner prototype built with React, TypeScript, and Vite. This repository was empty apart from its initial commit; V1 has not been modified.
 
 ```sh

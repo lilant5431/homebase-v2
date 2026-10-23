@@ -23,6 +23,11 @@ export const crystalFragment = /* glsl */ `
   uniform mat4 uInverseWorld;
   uniform vec4 uPlanes[PLANE_COUNT];
   uniform float uTime;
+  uniform float uLiving;
+  uniform float uEnergy;
+  uniform float uPhase;
+  uniform float uBeacon;
+  uniform float uBeamWidth;
   uniform float uEmphasis;
   uniform float uRefraction;
   uniform float uDispersion;
@@ -79,6 +84,29 @@ export const crystalFragment = /* glsl */ `
     float pulse = .65+.35*sin(p.y*.6-uTime*.65);
     return (core*pulse*.9+layers)*(.7+.3*smoothstep(-5.,3.,p.y));
   }
+
+  float erfApprox(float x) {
+    float t=1./(1.+.3275911*abs(x));
+    float q=(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-.284496736)*t+.254829592)*t;
+    return sign(x)*(1.-q*exp(-x*x));
+  }
+  // Exact finite-segment integral of a radial Gaussian around the local Y axis.
+  // Avoids a subpixel spine flickering between the old 12 discrete samples.
+  float spineIntegral(vec3 p,vec3 d,float lengthInCrystal,float width) {
+    float lo=0.,hi=lengthInCrystal;
+    if(abs(d.y)>.00001) {
+      float a=(-5.6-p.y)/d.y,b=(6.1-p.y)/d.y;
+      lo=max(lo,min(a,b));hi=min(hi,max(a,b));
+    } else if(p.y < -5.6 || p.y > 6.1) return 0.;
+    if(hi<=lo) return 0.;
+    p+=d*lo;float len=hi-lo;
+    float a=dot(d.xz,d.xz),b=dot(p.xz,d.xz),c=dot(p.xz,p.xz);
+    if(a<.000001) return len*exp(-c/(width*width));
+    float root=sqrt(a),denom=root*width;
+    float integral=.886226925*width/root*exp(-max(0.,c-b*b/a)/(width*width))
+      *(erfApprox((a*len+b)/denom)-erfApprox(b/denom));
+    return max(0.,integral);
+  }
   vec3 traceBand(vec3 entry, vec3 ray, vec3 normal, float ior) {
     vec3 d = refract(ray,normal,1./ior);
     vec3 p = entry+ d*.002;
@@ -88,14 +116,20 @@ export const crystalFragment = /* glsl */ `
       vec4 hit = exitFacet(p,d);
       if(hit.w > 1000.) break;
       float lengthInCrystal = hit.w;
-      float stepSize = lengthInCrystal/12.;
-      float light = 0.;
-      for (int s=0; s<12; s++) {
-        light += internalLight(p+d*(float(s)+.5)*stepSize)*stepSize;
+      vec3 attenuation=exp(-vec3(.068,.025,.015)*lengthInCrystal);
+      if(uLiving > .5) {
+        float spine=spineIntegral(p,d,lengthInCrystal,.105)*32.;
+        float mantle=spineIntegral(p,d,lengthInCrystal,.34)*2.2;
+        float aura=spineIntegral(p,d,lengthInCrystal,.75)*.18;
+        vec3 emission=vec3(.72,.92,1.)*spine+mix(vec3(.18,.6,.9),uTint,.35)*(mantle+aura);
+        sum += throughput*sqrt(attenuation)*emission*(.45+.55*uEnergy);
+        throughput *= attenuation;
+      } else {
+        float stepSize=lengthInCrystal/12.,light=0.;
+        for(int s=0;s<12;s++) light+=internalLight(p+d*(float(s)+.5)*stepSize)*stepSize;
+        throughput*=attenuation;
+        sum+=throughput*mix(vec3(.6,.86,1.),uTint,.15)*light*.12;
       }
-      // Beer-Lambert absorption gives real thickness-dependent color.
-      throughput *= exp(-vec3(.068,.025,.015)*lengthInCrystal);
-      sum += throughput*mix(vec3(.6,.86,1.),uTint,.15)*light*.12;
       p += d*lengthInCrystal;
       vec3 exiting = refract(d,-hit.xyz,ior);
       float reflection = fresnel(abs(dot(d,hit.xyz)),ior);
@@ -152,6 +186,11 @@ export const crystalFragment = /* glsl */ `
 
 export const floorFragment = /* glsl */ `
   uniform float uTime;
+  uniform float uLiving;
+  uniform float uEnergy;
+  uniform float uPhase;
+  uniform float uBeacon;
+  uniform float uBeamWidth;
   uniform vec3 uTint;
   varying vec3 vWorld;
   void main() {
@@ -166,11 +205,26 @@ export const floorFragment = /* glsl */ `
     vec3 stone = vec3(.009,.022,.032)+vec3(.04,.065,.07)*pool;
     stone += uTint*(rings*.16+seam*.25+caustic*.7*pool);
     stone += uTint*exp(-r*.38)*(.14+.025*sin(uTime*.4));
+    if(uLiving>.5) {
+      float radial = r*2.1-uPhase*.9;
+      float ring=1.-smoothstep(.025+fwidth(radial),.08+fwidth(radial),abs(sin(radial)));
+      float spokes=pow(.5+.5*cos(angle*6.+sin(r*.45-uPhase*.2)*.25),22.);
+      vec3 bed=vec3(.009,.019,.028)+uTint*exp(-r*.35)*uEnergy*.16;
+      bed+=uTint*uEnergy*(ring*.13*exp(-r*.14)+spokes*.12*exp(-r*.12));
+      float focus=exp(-r*r*.28)*uEnergy;
+      bed+=vec3(.5,.8,1.)*focus*.8;
+      stone=bed;
+    }
     gl_FragColor = vec4(stone,1.);
   }
 `;
 export const backdropFragment = /* glsl */ `
   uniform float uTime;
+  uniform float uLiving;
+  uniform float uEnergy;
+  uniform float uPhase;
+  uniform float uBeacon;
+  uniform float uBeamWidth;
   uniform vec3 uTint;
   varying vec3 vWorld;
   void main() {
@@ -183,11 +237,21 @@ export const backdropFragment = /* glsl */ `
     vec3 color = vec3(.012,.028,.044)+mix(uTint,vec3(.8,.9,1.),.6)*broad*.65*horizon;
     color += mix(uTint,vec3(.95,.8,.49),.4)*slit*horizon*.25;
     color += uTint*ribbon*.4;
+    if(uLiving>.5) {
+      float echo=exp(-pow((y-6.2)*.16,2.));
+      color=vec3(.009,.021,.034)+uTint*uEnergy*echo*(.045+.045*broad);
+      color+=uTint*uEnergy*pow(.5+.5*cos(a*6.-uPhase*.16),12.)*.075*echo;
+    }
     gl_FragColor = vec4(color,1.);
   }
 `;
 export const particleVertex = /* glsl */ `
   uniform float uTime;
+  uniform float uLiving;
+  uniform float uEnergy;
+  uniform float uPhase;
+  uniform float uBeacon;
+  uniform float uBeamWidth;
   uniform float uPixelRatio;
   attribute float aSeed;
   varying float vAlpha;
@@ -196,10 +260,16 @@ export const particleVertex = /* glsl */ `
     p.x += sin(uTime*.09+aSeed*40.)*.7;
     p.y = mod(p.y+uTime*(.045+aSeed*.08),16.);
     p.z += cos(uTime*.07+aSeed*23.)*.7;
+    if(uLiving>.5) {
+      float a=aSeed*218.+uPhase*.055;
+      float r=2.5+mod(aSeed*37.,1.)*8.5;
+      p=vec3(cos(a)*r,mod(position.y+uPhase*(.22+aSeed*.13),24.),sin(a)*r);
+    }
     vec4 mv = modelViewMatrix*vec4(p,1.);
     gl_Position = projectionMatrix*mv;
     gl_PointSize = clamp((18.+aSeed*35.)/-mv.z,1.,4.)*uPixelRatio;
     vAlpha = (.3+.7*aSeed)*(1.-smoothstep(10.,60.,-mv.z));
+    if(uLiving>.5) vAlpha*=clamp(uEnergy*.65,.1,1.)*exp(-length(p.xz)*.055)*(1.-smoothstep(15.,24.,p.y));
   }
 `;
 export const particleFragment = /* glsl */ `
@@ -209,4 +279,55 @@ export const particleFragment = /* glsl */ `
     float alpha = (1.-smoothstep(.03,.5,r))*vAlpha*.5;
     gl_FragColor = vec4(.65,.89,1.,alpha);
   }
+`;
+
+export const resonanceFragment = /* glsl */ `
+ uniform float uEnergy;
+ uniform float uPhase;
+ uniform vec3 uTint;
+ varying vec3 vWorld;
+ void main() {
+   float a=atan(vWorld.z,vWorld.x);
+   float h=.4+.6*exp(-abs(vWorld.y-6.2)*.13);
+   float crest=pow(.5+.5*cos(a-uPhase*.32+vWorld.y*.09),18.);
+   vec3 light=mix(vec3(.3,.64,.82),uTint,.5)*uEnergy*(.32+crest*2.4)*h;
+   gl_FragColor=vec4(light,1.);
+ }
+`;
+export const beaconFragment = /* glsl */ `
+ uniform mat4 uInverseBeam;
+ uniform float uEnergy;
+ uniform float uPhase;
+ uniform float uBeamWidth;
+ uniform vec3 uTint;
+ varying vec3 vLocal;
+ void main() {
+   vec3 ro=(uInverseBeam*vec4(cameraPosition,1.)).xyz;
+   vec3 rd=normalize(vLocal-ro);
+   float a=dot(rd.xz,rd.xz),b=dot(ro.xz,rd.xz),c=dot(ro.xz,ro.xz)-12.96;
+   float lo=0.,hi=1e5;
+   if(a<1e-7) { if(c>0.) discard; }
+   else {
+     float disc=b*b-a*c;if(disc<0.) discard;
+     lo=max(lo,(-b-sqrt(disc))/a);hi=min(hi,(-b+sqrt(disc))/a);
+   }
+   if(abs(rd.y)<1e-7) { if(abs(ro.y)>14.) discard; }
+   else {float l=(-14.-ro.y)/rd.y,h=(14.-ro.y)/rd.y;lo=max(lo,min(l,h));hi=min(hi,max(l,h));}
+   if(hi<=lo) discard;
+   float ds=(hi-lo)/40.,T=1.; vec3 light=vec3(0.);
+   for(int i=0;i<40;i++) {
+     vec3 p=ro+rd*(lo+(float(i)+.5)*ds);
+     float h=p.y+14.;
+     float w=uBeamWidth*(.55+h*.018);
+     float r=length(p.xz);
+     float density=exp(-r*r/(w*w))*.85+exp(-r*r/(w*w*6.))*.055;
+     density*=smoothstep(0.,.35,h)*(1.-smoothstep(18.,28.,h));
+     density*=.94+.06*sin(h*.65-uPhase*.55);
+     float alpha=1.-exp(-density*ds*.32);
+     vec3 color=mix(vec3(.65,.88,1.),uTint,.22);
+     light+=T*alpha*color*uEnergy*3.8;
+     T*=1.-alpha;
+   }
+   gl_FragColor=vec4(light,1.-T);
+ }
 `;
