@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="UTF-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  /><title>Homebase local AI evaluation</title>
+  <style>
+    body {
+      font: 16px system-ui;
+      background: #101725;
+      color: #eef5ff;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 20px;
+    }
+    button {
+      font: inherit;
+      padding: 12px 20px;
+    }
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      background: #17243a;
+      padding: 20px;
+    }
+    a {
+      color: #a7eaff;
+    }
+  </style>
+  <h1>Homebase · local inference evaluation</h1>
+  <p>
+    Actual WebGPU inference using Qwen2.5 1.5B. No cloud completion or synthetic
+    result. Loading downloads model files from Hugging Face and the MLC runtime
+    from GitHub.
+  </p>
+  <button id="run">Run stabilized scheduling evaluation</button>
+  <button id="cancel">Cancel evaluation</button>
+  <pre id="results">
+Ready to test. Fixtures and inference are labeled separately.</pre>
+  <script type="module">
+    import { loadModel, propose, cancelInference, MODEL_ID } from "/src/ai.ts";
+    import { evaluationState } from "/src/testFixtures.ts";
+    import { validateProposal } from "/src/domain.ts";
+    import { parseIntent, validateIntent } from "/src/planningIntent.ts";
+    const out = document.querySelector("#results");
+    const state = evaluationState();
+    let canceled = false;
+    const records = [];
+    const log = (record) => {
+      records.push(record);
+      out.textContent = JSON.stringify(records, null, 2);
+    };
+    const cases = [
+      {
+        name: "exact session",
+        request:
+          'Schedule "History essay" on 2026-10-20 at 14:00 for 60 minutes.',
+      },
+      {
+        name: "90-minute window",
+        request:
+          'Schedule "Calculus problem set" on 2026-10-21 between 13:00 and 17:00 for 90 minutes.',
+      },
+      {
+        name: "busy requested slot",
+        request:
+          'Schedule "History essay" on 2026-10-20 at 10:00 for 60 minutes.',
+      },
+      {
+        name: "ambiguous request",
+        request: "Find time for my homework tomorrow.",
+      },
+      {
+        name: "unsupported extra instruction",
+        request:
+          'Schedule "History essay" on 2026-10-20 at 14:00 for 60 minutes. Move my class if needed.',
+      },
+    ];
+    document.querySelector("#cancel").onclick = () => {
+      canceled = true;
+      cancelInference();
+    };
+    document.querySelector("#run").onclick = async () => {
+      records.length = 0;
+      canceled = false;
+      document.querySelector("#run").disabled = true;
+      log({
+        origin: "environment",
+        model: MODEL_ID,
+        userAgent: navigator.userAgent,
+        secure: window.isSecureContext,
+        webgpu: !!navigator.gpu,
+      });
+      try {
+        const loaded = await loadModel((text) => {
+          document.title = text;
+        });
+        log({ origin: "actual WebLLM load", ...loaded });
+        for (const item of cases) {
+          if (canceled) {
+            log({ origin: "control", canceled: true });
+            break;
+          }
+          let intent;
+          try {
+            intent = parseIntent(item.request, state.assignments);
+          } catch (error) {
+            log({
+              ...item,
+              origin: "deterministic clarification, no inference",
+              jsonValidity: null,
+              domainValidity: null,
+              instructionCorrectness: null,
+              approvalAllowed: false,
+              error: String(error),
+            });
+            continue;
+          }
+          const start = performance.now();
+          try {
+            const result = await propose(
+              { ...state, weekStart: "2026-10-19" },
+              item.request,
+            );
+            const domainErrors = validateProposal(state, result),
+              intentErrors = validateIntent(intent, result);
+            log({
+              ...item,
+              origin: "actual WebLLM inference",
+              result,
+              jsonValidity: true,
+              domainValidity: !domainErrors.length,
+              instructionCorrectness: !intentErrors.length,
+              domainErrors,
+              intentErrors,
+              approvalAllowed: !domainErrors.length && !intentErrors.length,
+            });
+          } catch (error) {
+            log({
+              ...item,
+              origin: "actual WebLLM inference attempt",
+              error: String(error),
+              rawOutput: error.rawOutput,
+              elapsedMs: Math.round(performance.now() - start),
+              jsonValidity: false,
+              domainValidity: null,
+              instructionCorrectness: null,
+              approvalAllowed: false,
+            });
+          }
+        }
+        const request = cases[1].request;
+        const fixture = {
+          summary:
+            "Deterministic replay of the old 60 vs 90 minute failure; NOT live inference.",
+          blocks: [
+            {
+              assignmentId: "calculus",
+              start: "2026-10-21T14:30",
+              end: "2026-10-21T15:30",
+            },
+          ],
+        };
+        const domainErrors = validateProposal(state, fixture),
+          intentErrors = validateIntent(
+            parseIntent(request, state.assignments),
+            fixture,
+          );
+        log({
+          origin: "deterministic mismatched-intent fixture, NOT inference",
+          request,
+          result: fixture,
+          jsonValidity: true,
+          domainValidity: !domainErrors.length,
+          instructionCorrectness: !intentErrors.length,
+          approvalAllowed: !domainErrors.length && !intentErrors.length,
+          intentErrors,
+        });
+      } catch (error) {
+        log({ origin: "blocker", error: String(error) });
+      } finally {
+        document.querySelector("#run").disabled = false;
+        document.title = "Evaluation complete";
+      }
+    };
+  </script>
+</html>
