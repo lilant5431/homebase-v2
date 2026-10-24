@@ -1,0 +1,78 @@
+- generic "Orb selection":
+  - 'button "Select orb: Programming practice · 2026-10-19 17:00"':
+    - generic: Unfinished
+  - 'button "Select orb: Optics laboratory · 2026-10-20 13:00"':
+    - generic: Unfinished
+  - 'button "Select orb: Statistics exercises · 2026-10-24 13:00"':
+    - generic: Study
+  - 'button "Select orb: Literature essay · 2026-10-25 06:00"':
+    - generic: Study
+  - 'button "Select orb: Calculus review · 2026-10-25 13:00"':
+    - generic: Study
+  - 'button "Select orb: Statistics exercises · 2026-10-26 17:00"':
+    - generic: Study
+  - 'button "Select orb: Optics laboratory · 2026-10-26 19:00"':
+    - generic: Study
+- generic: 01 / MY WEEK / CRYSTAL WORLD
+- generic: REDUCED — STATIC · WEBGL 2
+- generic "World instrument panel Paused":
+  - text: World instrument panel
+  - generic: Paused
+- paragraph: Convex facet tracing · coherent transmission · 3 internal segments · filtered 1024² probe · analytic spine / 64-step atmosphere · 4× HDR MSAA
+- term: Startup / first rendered frame
+- definition: 153 ms
+- term: Rendered frame rate
+- definition: 0.0 FPS
+- term: Frame interval p95 / worst
+- definition: 0.0 / 77.9 ms
+- term: CPU update + render submission
+- definition: 1.9 ms
+- term: GPU timer (sampled)
+- definition: 1.9 ms
+- term: Draw calls / triangles incl. passes
+- definition: 647 / 468,262
+- term: Geometries / textures / programs
+- definition: 71 / 18 / 41
+- term: Render buffer resolution
+- definition: 1600 × 1000
+- term: Estimated HDR color buffers only
+- definition: ~287.3 MB
+- term: Rendered frames / world time
+- definition: 9208 / 55.9 s
+- term: Camera position
+- definition: 9.10, 7.50, 24.94
+- term: Light response
+- definition: 0 events · Idle · no interaction wave · 0 active
+- term: Motion
+- definition: Reduced — static
+- term: Constellation
+- definition: 31 active / 35 sessions · 0 transitions · Existing schedule · no arrival effects
+- paragraph: ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 (0x00002D05) Direct3D11 vs_5_0 ps_5_0, D3D11)
+- button "Record world (60s max)"
+- button "Resume world motion" [pressed]
+- button "Test startup failure"
+- button "Test context loss"
+- status: World clip saved. The recording contains the rendered canvas only.
+- link "Download latest world clip":
+  - /url: blob:http://127.0.0.1:43130/09fbdfe3-c150-4e7d-85e2-57e3a31ba3f2
+- text: FPS measures submitted frames, not display scanout. Color-buffer estimate excludes depth, shadows, environment maps and driver overhead. No automatic quality downgrade.
+- banner:
+  - link "Back to planner":
+    - /url: "#"
+    - text: Back to planner
+  - link "lumimark LIVING SCHEDULE":
+    - /url: "#crystal"
+    - text: lumimark
+    - generic: LIVING SCHEDULE
+  - button "Disable graphics":
+    - text: Disable graphics
+- navigation "Workspace views":
+  - button "Constellation" [active] [pressed]
+  - button "Assignments"
+  - button "Planning studio"
+- main:
+  - text: YOUR WORK, HELD IN LIGHT
+  - heading "A little focus. A wider universe." [level=1]:
+    - text: A little focus.
+    - emphasis: A wider universe.
+  - paragraph: 31 unfinished sessions · 5 past scheduled tim

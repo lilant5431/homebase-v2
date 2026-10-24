@@ -16,22 +16,22 @@ export function scheduleOrbs(state: State, now: string): WorldOrb[] {
     .sort((a, b) => a.start.localeCompare(b.start) || a.id.localeCompare(b.id))
     .map((b) => {
       const date = new Date(b.start + "Z");
-      const day = (date.getUTCDay() + 6) % 7;
       const minute = date.getUTCHours() * 60 + date.getUTCMinutes();
-      const lane = day < 4 ? 0 : 1;
-      const bucket = `${lane}:${day}:${Math.floor(minute / 90)}`;
+      const day = b.start.slice(0, 10),
+        today = now.slice(0, 10);
+      const lane = day < today ? 0 : day === today ? 1 : 2;
+      const bucket = `${lane}:${Math.floor(minute / 60)}`;
       const rank = groups.get(bucket) || 0;
       groups.set(bucket, rank + 1);
       return {
         id: b.id,
         label: `${b.title} · ${b.start.replace("T", " ")}`,
         color: palette[b.color],
-        angle:
-          ((day + minute / 1440) / 7) * Math.PI * 2 -
-          Math.PI / 2 +
-          (Math.floor(rank / 12) % 16) * 0.009,
+        // A shared local 24-hour dial. No angle jitter across gate boundaries.
+        angle: Math.PI / 2 - (minute / 1440) * Math.PI * 2,
         lane,
-        spread: (rank % 12) * 0.055,
+        spread: (rank % 24) * 0.025,
+        radialOffset: (Math.floor(rank / 24) % 16) * 0.018,
         size: 0.32 + Math.min(240, minutesBetween(b.start, b.end)) / 600,
         completed: b.sessionCompleted === true,
         overdue: !b.sessionCompleted && b.end < now,

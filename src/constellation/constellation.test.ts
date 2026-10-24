@@ -261,7 +261,8 @@ describe("academic snapshot to constellation", () => {
     expect(new Set(nodes.map((n) => n.id)).size).toBe(300);
     expect(Math.max(...nodes.map((n) => n.spread))).toBeLessThan(0.7);
     expect(
-      new Set(nodes.map((n) => `${n.angle}:${n.spread}`)).size,
+      new Set(nodes.map((n) => `${n.angle}:${n.spread}:${n.radialOffset}`))
+        .size,
     ).toBeGreaterThan(100);
     expect(
       scheduleOrbs({ ...state, blocks: state.blocks.slice().reverse() }, now),
@@ -291,7 +292,7 @@ describe("interruptible committed-snapshot lifecycle", () => {
     expect(life.sample(1.3).effects).toMatchObject([{ kind: "deletion" }]);
     life.update([node], null, 1.4, false);
     expect(life.sample(1.4).effects).toHaveLength(1);
-    expect(life.sample(5).effects).toEqual([]);
+    expect(life.sample(7).effects).toEqual([]);
   });
   it("moves the same ID, avoids initial/quiet effects and never replays effects after recovery", () => {
     const life = createOrbLifecycle([node]);

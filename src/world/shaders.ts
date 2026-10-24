@@ -8,7 +8,8 @@ const lightResponse = /* glsl */ `
      float age=time-uEvents[i].x;
      if(age>=0. && age<5.) {
        float d=(radius-age*4.3)/.42;
-       wave+=uEvents[i].y*exp(-d*d)*exp(-age*.55);
+       float dissolve=(1.-smoothstep(3.4,5.,age))*(1.-smoothstep(15.,22.,radius));
+       wave+=uEvents[i].y*exp(-d*d)*exp(-age*.55)*dissolve;
      }
    }
    return wave;

@@ -6,6 +6,7 @@ export type WorldOrb = {
   angle: number;
   lane: number;
   spread: number;
+  radialOffset?: number;
   size: number;
   completed: boolean;
   overdue: boolean;

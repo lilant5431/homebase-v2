@@ -234,10 +234,29 @@ export default function ConstellationWorkspace() {
                 </select>
               </label>
               <p className="constellation-guide">
-                Monday–Thursday follow the inner rail; Friday–Sunday follow the
-                outer rail. Angle marks the day and time. Larger lights hold
+                Inner / lower: past dates. Middle: today ({now.slice(0, 10)}).
+                Outer / upper: future dates. Each ring is a local 24-hour dial,
+                clockwise from the single-pin midnight gate. Larger lights hold
                 longer sessions.
               </p>
+              <details className="temporal-key">
+                <summary>Time gates & energy paths</summary>
+                <p>
+                  1 pin: 00:00–06:00 · 2 pins: 06:00–12:00 · 3 pins: 12:00–18:00
+                  · 4 pins: 18:00–24:00.
+                </p>
+                <p>
+                  Dates choose the ring; start time chooses the position. Dates
+                  use the saved local clock, without timezone conversion. Past
+                  unfinished work stays unfinished. Completed sessions stay in
+                  history.
+                </p>
+                <p>
+                  On creation: pedestal feeders → Lumen spine → directed rail
+                  pulse → session light. Up to four energy routes run together;
+                  larger batches settle directly into their saved positions.
+                </p>
+              </details>
               <ul
                 className="constellation-list"
                 aria-label="Study session list"
@@ -451,7 +470,9 @@ export default function ConstellationWorkspace() {
         <p className="constellation-legend">
           One light, one saved session.
           <br />
-          Completed work stays in your history. Unfinished work stays visible.
+          Past dates · Today · Future dates
+          <br />
+          00–06 · 06–12 · 12–18 · 18–24
         </p>
       </main>
       <AcademicDialog state={state} days={days} editor={editor} />
