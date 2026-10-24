@@ -1,0 +1,41 @@
+- link "Skip to workspace":
+  - /url: "#au-workspace"
+- group "Lumen environment controls":
+  - generic "Lumen / light chamber"
+- generic: 01 / MY WEEK / CRYSTAL WORLD
+- generic: LIVE · WEBGL 2
+- generic "World instrument panel 165 FPS" [active]:
+  - text: World instrument panel
+  - generic: 165 FPS
+- paragraph: Convex facet tracing · coherent transmission · 3 internal segments · filtered 1024² probe · analytic spine / 64-step atmosphere · 4× HDR MSAA
+- term: Startup / first rendered frame
+- definition: 179 ms
+- term: Rendered frame rate
+- definition: 165.0 FPS
+- term: Frame interval p95 / worst
+- definition: 6.2 / 13.4 ms
+- term: CPU update + render submission
+- definition: 1.8 ms
+- term: GPU timer (sampled)
+- definition: 3.5 ms
+- term: Draw calls / triangles incl. passes
+- definition: 513 / 356,238
+- term: Geometries / textures / programs
+- definition: 36 / 18 / 33
+- term: Render buffer resolution
+- definition: 1599 × 1000
+- term: Estimated HDR color buffers only
+- definition: ~287.2 MB
+- term: Rendered frames / world time
+- definition: 2483 / 15.0 s
+- term: Camera position
+- definition: 10.33, 7.18, 25.43
+- term: Light response
+- definition: 2 events · Beacon · 0 active
+- term: Motion
+- definition: Live
+- paragraph: ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 (0x00002D05) Direct3D11 vs_5_0 ps_5_0, D3D11)
+- button "Freeze world motion"
+- button "Test startup failure"
+- button "Test context loss"
+- generic: FPS measures submitted frames, not display scanout. Color-buffer estimate excludes depth, shadows, environment maps and driver overhead. No automatic quality downgrade.

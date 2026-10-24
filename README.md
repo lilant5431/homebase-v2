@@ -1,6 +1,8 @@
-# Homebase V2
+# Lumimark V2
 
-A responsive academic planner prototype built with React, TypeScript, and Vite. This repository was empty apart from its initial commit; V1 has not been modified.
+A local academic planner with the selected Lumen visual environment. Run the app and open `/#crystal` for the isolated, disposable demonstration workspace; **Back to planner** returns to your saved academic data. See [integration verification and evidence](docs/integration/README.md). Repository paths, storage identifiers, schema and backups remain compatible.
+
+A responsive academic planner prototype built with React, TypeScript, and Vite. Homebase V1 is separate and has not been modified.
 
 ```sh
 npm ci
@@ -30,8 +32,14 @@ AI runs through a Web Worker and WebLLM, with no cloud inference fallback. Model
 
 Worker `error`/`messageerror` during initialization rejects loading, terminates the failed worker and permits retry. Startup listeners and obsolete progress callbacks are retired on settlement. This is not a general network-download timeout or automatic model retry.
 
-Rollback the application by reverting this feature commit; versioned storage keys do not touch V1 data. Before changing schema in a future release, export and implement an explicit migration rather than silently replacing user data.
+Rollback the visual integration by reverting its merge commit; versioned storage keys do not touch V1 data. Before changing schema in a future release, export and implement an explicit migration rather than silently replacing user data.
 
 ## Verification
 
-See [verification results](docs/verification.md) and [screenshots](docs/screenshots). `npm audit` reports zero known vulnerabilities at implementation time. Build warns about the large lazy WebLLM/Wasm chunks; ordinary planner startup loads the smaller application bundle and does not initialize inference.
+See [current integration verification](docs/integration/README.md), [foundation verification](docs/verification.md), and [planner screenshots](docs/screenshots). Historical visual experiments and their evidence remain in `docs/auditions`, `docs/world`, `docs/crystal`, `docs/gemstone`, `docs/lumen`, and `docs/optical`; their comparison controls are no longer part of the application. `npm audit` reports zero known vulnerabilities at implementation time. Build warns about the large lazy WebLLM/Wasm chunks; ordinary planner startup loads the smaller application bundle and does not initialize inference.
+
+## Selected visual environment
+
+Lumen uses coherent convex-facet transmission, a luminous internal spine, a 64-step atmospheric beacon, filtered HDR reflections, 4× HDR MSAA, metallic orbital rails, a planar reflective receiver and bounded interaction wavefronts. Semantic HTML workflows communicate presentation state through `src/world/contract.ts`; the renderer cannot write planner data. Disable graphics at any time. Reduced-motion preferences and the explicit freeze control use static rendering with immediate navigation. Graphics errors retain the workbench and expose retry.
+
+The previous identity auditions, alternate gemstone cuts, optical reference/comparison modes and in-app recording experiment have been removed. Old audition/world hash links resolve to the selected Lumen workspace. Existing historical branches and evidence are preserved. No staging deployment workflow is included in the consolidated application.

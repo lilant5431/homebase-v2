@@ -1,0 +1,709 @@
+.crystal-workspace.au-world {
+  --ink: #edf3f0;
+  --muted: #bdced1;
+  --line: #b7d7df25;
+  --accent: #bdebf5;
+  --panel: #101f30eb;
+  --button: #c6e9e9;
+  --button-ink: #132a36;
+  --facet: #bdebf5;
+  background: #06111d;
+  min-height: 100vh;
+  color-scheme: dark;
+}
+.crystal-workspace.au-world.world-area-assignments {
+  --facet: #b8f4d9;
+}
+.crystal-workspace.au-world.world-area-planning {
+  --facet: #d7c5ff;
+}
+.world-render-surface {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: #071522;
+  pointer-events: none;
+}
+.world-render-surface canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.world-render-surface .world-canvas-failed {
+  visibility: hidden;
+}
+.crystal-workspace.au-world:after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(90deg, #06101abb, transparent 65%);
+  pointer-events: none;
+}
+.crystal-workspace.au-world .world-toolbar {
+  height: 54px;
+  min-height: 54px;
+  padding: 9px 26px;
+  background: #0a1723bf;
+  border-bottom: 1px solid #afcfdf28;
+  backdrop-filter: blur(14px);
+  font-size: 10px;
+}
+.world-mode-bar {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+.world-mode-bar > a {
+  opacity: 0.75;
+  letter-spacing: 0;
+}
+.world-mode-bar > span {
+  color: #c7dbe5;
+}
+.world-mode-bar > button {
+  border: 1px solid #b4d4e54d;
+  padding: 6px 12px;
+  font-size: 10px;
+  letter-spacing: 0;
+}
+.world-mode-bar > button[aria-pressed="true"] {
+  background: #d3ecec;
+  color: #17313c;
+}
+.crystal-workspace.au-world .au-shell {
+  max-width: none;
+  padding: 0 30px 0 205px;
+}
+.crystal-workspace.au-world .au-header {
+  position: fixed;
+  top: 54px;
+  bottom: 0;
+  left: 0;
+  width: 170px;
+  padding: 33px 23px;
+  gap: 66px;
+  z-index: 4;
+  background: linear-gradient(90deg, #091523c9, #09152335);
+  border-right: 1px solid #c2dbe21c;
+  backdrop-filter: blur(8px);
+}
+.crystal-workspace.au-world .au-brand {
+  font:
+    25px/1.3 Cambria,
+    Georgia,
+    serif;
+  gap: 8px;
+  letter-spacing: -0.8px;
+}
+.crystal-workspace.au-world .au-brand small {
+  font:
+    7px/1.8 "Segoe UI",
+    sans-serif;
+  letter-spacing: 1.1px;
+  max-width: 110px;
+}
+.crystal-workspace.au-world .au-brand svg {
+  width: 20px;
+  filter: drop-shadow(0 0 10px #bef4ff88);
+}
+.crystal-workspace.au-world .au-nav {
+  gap: 20px;
+}
+.crystal-workspace.au-world .au-nav button {
+  font-size: 11px;
+  letter-spacing: 0.2px;
+  color: #c3d2db;
+}
+.crystal-workspace.au-world .au-nav button[aria-current] {
+  color: var(--facet);
+  border-bottom-color: var(--facet);
+}
+.crystal-workspace.au-world .au-nav-number {
+  color: var(--facet);
+}
+.crystal-workspace.au-world .au-profile {
+  font-size: 9px;
+  color: #b5cbd3;
+}
+.crystal-workspace.au-world .au-profile b {
+  border-radius: 0;
+  background: #bbd9ef15;
+}
+.crystal-workspace.au-world .au-hero {
+  min-height: 203px;
+  padding: 34px 0 27px;
+  align-items: flex-start;
+}
+.crystal-workspace.au-world .au-hero > div:first-child {
+  max-width: 690px;
+}
+.crystal-workspace.au-world .au-hero h1 {
+  font:
+    400 clamp(38px, 3.6vw, 58px)/1.08 Cambria,
+    Georgia,
+    serif;
+  letter-spacing: -2px;
+  text-shadow: 0 4px 30px #050d17;
+  max-width: 660px;
+  margin: 16px 0 15px;
+}
+.crystal-workspace.au-world .au-hero .au-kicker {
+  font-size: 8px;
+  letter-spacing: 1.8px;
+  color: var(--facet);
+}
+.crystal-workspace.au-world .au-hero p {
+  color: #d2e0e4;
+  font-size: 11px;
+  text-shadow: 0 2px 10px #071321;
+}
+.crystal-workspace.au-world .au-hero-index {
+  display: none;
+}
+.crystal-workspace.au-world .au-workflows {
+  display: block;
+  width: min(720px, 48vw);
+  max-width: none;
+  position: relative;
+  margin: 0;
+}
+.crystal-workspace.au-world .au-primary {
+  position: relative;
+}
+/* Readable HTML stays planar. The angled corner, luminous seam and connected
+   rule suggest a display cut from a facet without distorting text or focus. */
+.crystal-workspace.au-world .au-primary:after {
+  content: "";
+  position: absolute;
+  right: -55px;
+  top: 46px;
+  width: 55px;
+  height: 80px;
+  border-top: 1px solid var(--facet);
+  border-right: 1px solid var(--facet);
+  opacity: 0.4;
+  transform: skewY(-28deg);
+  pointer-events: none;
+}
+.crystal-workspace.au-world .au-surface {
+  background: linear-gradient(125deg, #101d2cf0, #102337e6);
+  border: 1px solid #c5e3f13b;
+  border-top-color: var(--facet);
+  border-radius: 1px 22px 1px 1px;
+  box-shadow:
+    inset 0 1px 0 #d8f7ff13,
+    0 25px 65px #02091255;
+  backdrop-filter: blur(20px);
+}
+.crystal-workspace.au-world .au-calendar {
+  background: linear-gradient(145deg, #101e30ed, #102537e3);
+}
+.crystal-workspace.au-world .au-section-head {
+  padding: 21px 24px;
+}
+.crystal-workspace.au-world .au-section-head h2 {
+  font:
+    26px Cambria,
+    Georgia,
+    serif;
+  margin-top: 8px;
+}
+.crystal-workspace.au-world .au-day-head {
+  height: 57px;
+}
+.crystal-workspace.au-world .au-calendar-scroll {
+  max-height: 435px;
+  overflow: auto;
+  scrollbar-color: #547685 #142331;
+}
+.crystal-workspace.au-world .au-calendar-inner {
+  min-width: 665px;
+}
+.crystal-workspace.au-world .au-time-grid {
+  height: 540px;
+}
+.crystal-workspace.au-world .au-times > span {
+  height: 60px;
+}
+.crystal-workspace.au-world .au-days {
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0 59px,
+    var(--line) 59px 60px
+  );
+}
+.crystal-workspace.au-world .au-today {
+  background: #b2dbe210;
+  border-top: 1px solid var(--facet);
+}
+.crystal-workspace.au-world .au-calendar-foot {
+  background: #07172665;
+  font-size: 8px;
+  padding: 15px 18px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.crystal-workspace.au-world .au-event {
+  background: var(--event-bg);
+  border-radius: 2px;
+  box-shadow:
+    inset 0 1px 0 #e2faff20,
+    2px 4px 12px #020a1230;
+}
+.crystal-workspace.au-world .au-event strong {
+  font-weight: 500;
+  line-height: 1.35;
+}
+.crystal-workspace.au-world .au-event small {
+  font-size: 8px;
+}
+.crystal-workspace.au-world .au-event:hover {
+  background: var(--event-bg);
+  box-shadow: 0 0 22px #a4d8ff33;
+}
+.crystal-workspace.au-world .lavender {
+  --event-bg: #46405fe8;
+  --event-ink: #e8ddfa;
+  --event-border: #c3b3ef66;
+}
+.crystal-workspace.au-world .blue {
+  --event-bg: #2d4b64eb;
+  --event-ink: #d3eaff;
+  --event-border: #acd6ff66;
+}
+.crystal-workspace.au-world .peach {
+  --event-bg: #57483fe8;
+  --event-ink: #ffe3cc;
+  --event-border: #f4c7ab66;
+}
+.crystal-workspace.au-world .green {
+  --event-bg: #314e49eb;
+  --event-ink: #ccebd8;
+  --event-border: #b8dfb766;
+}
+.crystal-workspace.au-world .au-secondary {
+  display: none;
+}
+.crystal-workspace.au-world .au-footer {
+  max-width: 720px;
+  color: #b9d1d8;
+  font-size: 7px;
+  margin-top: 22px;
+  padding-bottom: 24px;
+}
+.crystal-workspace.au-world .au-action {
+  border-radius: 1px 10px 1px 1px;
+  box-shadow:
+    inset 0 1px 0 #fff7,
+    0 5px 25px #050e1730;
+  font-size: 11px;
+}
+.crystal-workspace.au-world .au-planning {
+  padding: 29px;
+  min-height: 440px;
+  max-width: none;
+}
+.crystal-workspace.au-world .au-planning h2 {
+  font:
+    35px/1.15 Cambria,
+    serif;
+  max-width: 500px;
+}
+.crystal-workspace.au-world .au-planning textarea {
+  background: #081829d9;
+  color: #e8eef4;
+  border-color: #abc9e84d;
+}
+.crystal-workspace.au-world .au-proposal {
+  background: #abcaff08;
+  padding: 20px 15px 12px;
+}
+.crystal-workspace.au-world .au-assignments {
+  min-height: 440px;
+}
+.crystal-workspace.au-world .au-assignment {
+  padding: 22px 0;
+}
+.crystal-workspace.au-world .au-course-icon {
+  background: var(--event-bg);
+  color: var(--event-ink);
+}
+.crystal-workspace.au-world .au-detail {
+  background: #122536f7;
+  backdrop-filter: blur(20px);
+  border-color: #b6daea66;
+  right: 30px;
+  width: min(380px, calc(100vw - 40px));
+}
+.world-caption {
+  position: fixed;
+  right: 35px;
+  top: 89px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+  font:
+    8px/1.6 "Segoe UI",
+    sans-serif;
+  letter-spacing: 2px;
+  color: #c1dce7;
+  pointer-events: none;
+  z-index: 2;
+}
+.world-caption span:first-child {
+  padding-bottom: 8px;
+  border-bottom: 1px solid #bfdeee66;
+}
+.world-caption span:last-child {
+  font:
+    8px "Courier New",
+    monospace;
+  letter-spacing: 1px;
+  background: #0c213366;
+  padding: 7px 10px;
+  border: 1px solid #b6deef22;
+}
+.crystal-orientation {
+  position: fixed;
+  bottom: 90px;
+  right: 7%;
+  width: 265px;
+  color: #d4e9ee;
+  text-shadow: 0 2px 20px #061321;
+  pointer-events: none;
+}
+.crystal-orientation > span {
+  font:
+    7px "Segoe UI",
+    sans-serif;
+  letter-spacing: 2px;
+}
+.crystal-orientation strong {
+  display: block;
+  font:
+    30px/1.5 Cambria,
+    Georgia,
+    serif;
+  letter-spacing: -0.7px;
+  color: var(--facet);
+  margin-top: 13px;
+}
+.crystal-orientation p {
+  font-size: 11px;
+}
+.crystal-orientation > div {
+  display: flex;
+  gap: 8px;
+  margin-top: 22px;
+}
+.crystal-orientation i {
+  width: 32px;
+  height: 2px;
+  background: #b6d4ea38;
+}
+.crystal-orientation i.active {
+  background: var(--facet);
+  box-shadow: 0 0 14px var(--facet);
+}
+.world-diagnostics {
+  position: fixed;
+  right: 22px;
+  bottom: 16px;
+  z-index: 8;
+  width: 330px;
+  border: 1px solid #b3d2e13d;
+  background: #0b1b2bf2;
+  color: #e1edf2;
+  backdrop-filter: blur(16px);
+  font:
+    10px/1.6 "Segoe UI",
+    sans-serif;
+  box-shadow: 0 10px 30px #030a164d;
+}
+.world-diagnostics summary {
+  cursor: pointer;
+  padding: 11px 15px;
+  font-size: 10px;
+  list-style: inside;
+  letter-spacing: 0.3px;
+}
+.world-diagnostics summary > span {
+  float: right;
+  font: 10px monospace;
+  color: #c3e6ef;
+}
+.world-instruments {
+  padding: 0 15px 14px;
+  max-height: 65vh;
+  overflow: auto;
+}
+.world-instruments > p {
+  font-size: 10px;
+  color: #b5ccd9;
+  margin-bottom: 12px;
+}
+.world-instruments dl {
+  margin: 0;
+}
+.world-instruments dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 6px 0;
+  border-top: 1px solid #b6cfe122;
+}
+.world-instruments dt {
+  color: #c1d2df;
+  font-size: 9px;
+}
+.world-instruments dd {
+  margin: 0;
+  text-align: right;
+  font:
+    9px/1.8 "Courier New",
+    monospace;
+}
+.world-diagnostic-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 12px 0;
+}
+.crystal-workspace.au-world .world-diagnostic-actions button,
+.world-failure button {
+  font-size: 10px;
+  padding: 7px 10px;
+  border: 1px solid #c5dfed55;
+  background: #cee2eb0d;
+}
+.crystal-workspace.au-world .world-diagnostic-actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.world-instruments small {
+  font-size: 8px;
+  color: #a7bbc8;
+}
+.world-gpu {
+  font: 8px/1.5 monospace;
+  overflow-wrap: anywhere;
+  margin-top: 12px;
+}
+.world-failure {
+  position: relative;
+  margin: 18px 30px 0 205px;
+  padding: 16px 20px;
+  border: 1px solid #c5a86b;
+  background: #192437f2;
+  color: #f8ead2;
+  font-size: 12px;
+  max-width: 700px;
+  z-index: 3;
+}
+.world-failure p {
+  margin: 6px 0 12px;
+}
+.world-failure span {
+  display: block;
+  margin-top: 10px;
+  font-size: 10px;
+}
+.crystal-workspace.au-world.world-immersive .au-workflows,
+.crystal-workspace.au-world.world-immersive .au-footer {
+  display: none;
+}
+.crystal-workspace.au-world.world-immersive .au-hero {
+  pointer-events: none;
+  min-height: calc(100vh - 54px);
+}
+.crystal-workspace.au-world.world-immersive .au-hero > div:first-child {
+  max-width: 400px;
+}
+.crystal-workspace.au-world.world-immersive .au-hero h1 {
+  font-size: 57px;
+  max-width: 400px;
+}
+.world-immersive .au-detail {
+  display: none;
+}
+@media (min-width: 1900px) {
+  .crystal-workspace.au-world .au-workflows {
+    width: 800px;
+  }
+  .crystal-workspace.au-world .au-hero {
+    min-height: 240px;
+  }
+  .crystal-workspace.au-world .au-calendar-scroll {
+    max-height: 530px;
+  }
+}
+@media (max-width: 1100px) {
+  .crystal-workspace.au-world .au-header {
+    width: 145px;
+    padding: 30px 15px;
+  }
+  .crystal-workspace.au-world .au-shell {
+    padding-left: 170px;
+  }
+  .crystal-workspace.au-world .au-brand {
+    font-size: 21px;
+  }
+  .crystal-workspace.au-world .au-brand svg {
+    display: none;
+  }
+  .crystal-workspace.au-world .au-nav button {
+    font-size: 10px;
+    gap: 8px;
+  }
+  .world-mode-bar {
+    gap: 12px;
+  }
+  .world-mode-bar > span {
+    display: none;
+  }
+  .crystal-orientation {
+    right: 30px;
+  }
+}
+@media (max-width: 850px) {
+  .crystal-workspace.au-world .au-shell {
+    padding: 0 18px;
+  }
+  .crystal-workspace.au-world .au-header {
+    position: relative;
+    width: auto;
+    top: 0;
+    bottom: auto;
+    flex-direction: row;
+    gap: 25px;
+    padding: 20px 0;
+    background: none;
+    backdrop-filter: none;
+    border: 0;
+  }
+  .crystal-workspace.au-world .au-nav {
+    flex-direction: row;
+    width: 100%;
+    gap: 16px;
+  }
+  .crystal-workspace.au-world .au-hero {
+    min-height: 330px;
+    padding: 20px 0 45px;
+  }
+  .crystal-workspace.au-world .au-hero h1 {
+    font-size: 40px;
+    max-width: 400px;
+  }
+  .crystal-workspace.au-world .au-hero .au-kicker {
+    font-size: 7px;
+  }
+  .crystal-workspace.au-world .au-workflows {
+    width: 100%;
+  }
+  .crystal-workspace.au-world .au-primary:after {
+    display: none;
+  }
+  .world-caption {
+    top: 155px;
+    right: 18px;
+  }
+  .world-caption span:first-child {
+    display: none;
+  }
+  .crystal-orientation {
+    display: none;
+  }
+  .world-failure {
+    margin: 0 18px 20px;
+  }
+  .world-mode-bar > a {
+    display: none;
+  }
+  .world-mode-bar button {
+    font-size: 9px;
+  }
+  .crystal-workspace.au-world .world-toolbar {
+    padding: 10px 15px;
+    gap: 10px;
+  }
+  .crystal-workspace.au-world .au-performance {
+    margin-left: 0;
+  }
+  .world-diagnostics {
+    width: min(330px, calc(100vw - 28px));
+    right: 14px;
+  }
+  .crystal-workspace.au-world.world-immersive .au-hero h1 {
+    font-size: 40px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .crystal-workspace.au-world * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+.gem-lab {
+  position: fixed;
+  right: 24px;
+  top: 150px;
+  width: 300px;
+  padding: 16px;
+  background: #091827ec;
+  border: 1px solid #b4d5e650;
+  z-index: 7;
+  color: #e6f1f4;
+  font:
+    10px/1.6 "Segoe UI",
+    sans-serif;
+  backdrop-filter: blur(14px);
+}
+.gem-options {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+.crystal-workspace .gem-lab button {
+  border: 1px solid #c0ddeb50;
+  padding: 6px 8px;
+  font-size: 10px;
+}
+.gem-lab button[aria-pressed="true"] {
+  background: #badde7;
+  color: #092334;
+}
+.gem-lab label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 8px 0;
+  gap: 8px;
+}
+.gem-lab select {
+  max-width: 180px;
+  background: #172d3e;
+  color: #e6f1f4;
+  border: 1px solid #b9d8e550;
+  padding: 4px;
+}
+.gem-lab > span:last-child {
+  display: block;
+  font-size: 8px;
+  color: #b5d4df;
+  margin-top: 12px;
+}
+@media (max-width: 850px) {
+  .gem-lab {
+    position: relative;
+    top: auto;
+    right: auto;
+    margin: 15px 18px;
+    width: auto;
+  }
+}

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { loadModel, propose, cancelInference } from "./ai";
 import { localISO, type State } from "./domain";
 import { parseIntent } from "./planningIntent";
@@ -24,17 +24,32 @@ export function usePlanning(
     [preview, setPreview] = useState<ProposalReview | null>(null);
   const generation = useRef(0);
   const inFlight = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      generation.current++;
+      if (inFlight.current) cancelInference();
+      inFlight.current = false;
+    };
+  }, []);
   const issues = preview ? reviewIssues(state, preview, request) : [];
   async function enable() {
+    const token = generation.current;
+    const current = () => mounted.current && token === generation.current;
     setLoading(true);
     try {
-      const result = await loadModel(setAIStatus);
+      const result = await loadModel((text) => {
+        if (current()) setAIStatus(text);
+      });
+      if (!current()) return;
       setReady(true);
       setAIStatus(`Ready · loaded in ${(result.loadMs / 1000).toFixed(1)}s`);
     } catch (e) {
-      setAIStatus(e instanceof Error ? e.message : String(e));
+      if (current()) setAIStatus(e instanceof Error ? e.message : String(e));
     } finally {
-      setLoading(false);
+      if (current()) setLoading(false);
     }
   }
   async function plan() {
@@ -82,7 +97,7 @@ export function usePlanning(
         setAIStatus(e instanceof Error ? e.message : String(e));
     } finally {
       inFlight.current = false;
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
   }
   function cancel() {

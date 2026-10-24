@@ -1,0 +1,51 @@
+ASSIGNMENTS
+Startup / first rendered frame
+178 ms
+Rendered frame rate
+165.1 FPS
+Frame interval p95 / worst
+6.6 / 58.5 ms
+CPU update + render submission
+3.5 ms
+GPU timer (sampled)
+0.7 ms
+Draw calls / triangles incl. passes
+1616 / 165,690
+Geometries / textures / programs
+25 / 19 / 28
+Render buffer resolution
+1600 × 1000
+Estimated HDR color buffers only
+~47.8 MB
+Rendered frames / world time
+23787 / 144.3 s
+Camera position
+-11.07, 6.01, 18.00
+Motion
+Live
+
+PLANNING
+Startup / first rendered frame
+178 ms
+Rendered frame rate
+165.0 FPS
+Frame interval p95 / worst
+6.2 / 58.5 ms
+CPU update + render submission
+3.6 ms
+GPU timer (sampled)
+0.7 ms
+Draw calls / triangles incl. passes
+1588 / 161,354
+Geometries / textures / programs
+25 / 19 / 28
+Render buffer resolution
+1600 × 1000
+Estimated HDR color buffers only
+~47.8 MB
+Rendered frames / world time
+41889 / 254.0 s
+Camera position
+3.11, 6.09, 9.00
+Motion
+Live
