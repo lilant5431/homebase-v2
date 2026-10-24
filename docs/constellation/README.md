@@ -20,6 +20,8 @@ Read-time migration does not write storage. On the first explicit save over a v2
 
 ## Verification
 
+[Final acceptance and deferred V2.3A issues](final-acceptance.md) records the later isolated 33-session browser verification, reschedule/restore/undo checks and final merge gate.
+
 - 90 automated tests including valid 300-session multi-week projection, exact ID reconstruction, approval/application metadata, v2 migration, original-byte preservation and quota failure, completion/locks, actual edit submission after reopening/unlinking, Blob/file export/import, undo and stale-tab guards, bounded/interruptible effects, static camera projection and recording lifecycle.
 - TypeScript, production build, dependency consistency and npm audit. No inference or model download needed.
 - Actual Chromium / RTX 5060 desktop browser at 1600×1000: create assignment and linked sessions; exactly one additional orb per saved session; direct orb and keyboard list selection; same-ID rescheduling; separate completion and deletion effects; completed history with assignment still in progress; lock blocks both move/delete; reopen/unlink regression; undo; actual JSON export/file-picker restore; reload reconstruction.
