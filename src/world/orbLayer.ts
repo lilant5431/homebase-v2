@@ -1,6 +1,16 @@
 import * as T from "three";
 import type { WorldInput, WorldHooks, WorldOrb } from "./contract";
-import { createOrbLifecycle } from "./orbLifecycle";
+import {
+  createOrbLifecycle,
+  MAX_ENERGY_ROUTES,
+  type OrbEffect,
+} from "./orbLifecycle";
+import {
+  createEnergyRoutes,
+  creationPhase,
+  routePoint,
+  routeNode,
+} from "./energyRoutes";
 
 const vertex = `
 attribute vec4 aState;
@@ -36,6 +46,7 @@ export function createOrbLayer(
   initial: WorldInput,
   hooks: WorldHooks,
   pulse: (kind: string, strength: number, time: number) => void,
+  ticks: T.Mesh[] = [],
 ) {
   const capacity = 5050;
   const geometry = new T.PlaneGeometry(2, 2);
@@ -81,28 +92,16 @@ export function createOrbLayer(
   focus.frustumCulled = false;
   focus.visible = false;
   focus.renderOrder = 5;
-  const arcGeometry = new T.BufferGeometry();
-  const arcPositions = new Float32Array(48 * 18 * 6);
-  arcGeometry.setAttribute(
-    "position",
-    new T.BufferAttribute(arcPositions, 3).setUsage(T.DynamicDrawUsage),
-  );
-  const arcMaterial = new T.LineBasicMaterial({
-    color: new T.Color(0.8, 1.8, 2.2),
-    transparent: true,
-    opacity: 0.75,
-    blending: T.AdditiveBlending,
-    depthWrite: false,
-  });
-  const arcs = new T.LineSegments(arcGeometry, arcMaterial);
-  arcs.frustumCulled = false;
+  focus.name = "session-focus";
+  aura.name = "session-coronas";
+  const routes = createEnergyRoutes(scene, ticks);
   const group = new T.Group();
-  group.add(aura, cores, arcs, focus);
+  group.add(aura, cores, focus);
   scene.add(group);
   const life = createOrbLifecycle(initial.orbs || [], initial.selectedOrb);
   let input = initial,
-    lastReport = -1,
     eventCount = 0;
+  let energy = 0;
   const matrix = new T.Matrix4(),
     rotation = new T.Quaternion(),
     scale = new T.Vector3(),
@@ -112,10 +111,17 @@ export function createOrbLayer(
   const color = new T.Color();
   const source = new T.Vector3(0, 6.2, 0);
   const positions = new Map<string, T.Vector3>();
+  const presentation = new Map<
+    string,
+    { position: T.Vector3; alpha: number }
+  >();
+  const anchors = new Map<
+    string,
+    { effect: OrbEffect; position: T.Vector3; alpha: number }
+  >();
   function at(orb: WorldOrb, halos: T.Group[], out: T.Vector3) {
-    // Weekday and nominal wall-clock minute determine position. Crowds form
-    // small stacks along the same rail instead of losing identity in one point.
-    const radius = 7.1 + orb.lane * 0.9;
+    // Shared 24-hour dial on past-date / today / future-date rings.
+    const radius = 7.1 + orb.lane * 0.9 + (orb.radialOffset || 0);
     out.set(
       Math.cos(orb.angle) * radius,
       Math.sin(orb.angle) * radius,
@@ -124,10 +130,16 @@ export function createOrbLayer(
     return halos[orb.lane].localToWorld(out);
   }
   return {
+    energy() {
+      return energy;
+    },
     positionOf(id: string) {
       return positions.get(id)?.clone();
     },
     update(next: WorldInput, time: number) {
+      const previousEffects = new Map(
+        life.sample(time).effects.map((e) => [e.id, e]),
+      );
       life.update(
         next.orbs || [],
         next.selectedOrb,
@@ -136,6 +148,17 @@ export function createOrbLayer(
       );
       input = next;
       const sample = life.sample(time);
+      for (const effect of sample.effects) {
+        if (previousEffects.get(effect.id) === effect) continue;
+        const shown = presentation.get(effect.id);
+        if (previousEffects.has(effect.id) && shown)
+          anchors.set(effect.id, {
+            ...shown,
+            position: shown.position.clone(),
+            effect,
+          });
+        else anchors.delete(effect.id);
+      }
       if (sample.count !== eventCount) {
         eventCount = sample.count;
         pulse(
@@ -149,13 +172,27 @@ export function createOrbLayer(
         );
       }
     },
-    render(time: number, halos: T.Group[], camera: T.Camera, force = false) {
+    render(time: number, halos: T.Group[], camera: T.Camera) {
       if (input.reducedMotion) life.clear();
       material.uniforms.uTime.value = time;
       focusMaterial.uniforms.uTime.value = time;
       focus.visible = false;
       halos.forEach((halo) => halo.updateMatrixWorld(true));
       const { effects, count, last } = life.sample(time);
+      for (const [id, anchor] of anchors)
+        if (!effects.includes(anchor.effect)) anchors.delete(id);
+      const activeBirths = new Set(
+        effects
+          .filter((e) => e.kind === "creation" && !anchors.has(e.id))
+          .slice(-MAX_ENERGY_ROUTES)
+          .map((e) => e.id),
+      );
+      energy = routes.render(
+        effects.filter((e) => !anchors.has(e.id)),
+        time,
+        (e, out) => at(e.to!, halos, out),
+        input.reducedMotion,
+      );
       const effectsById = new Map(effects.map((e) => [e.id, e]));
       const nodes = (input.orbs || []).filter((orb) => !orb.completed);
       for (const e of effects)
@@ -166,22 +203,23 @@ export function createOrbLayer(
         )
           nodes.push(e.from);
       positions.clear();
-      let index = 0,
-        arcIndex = 0;
+      presentation.clear();
+      let index = 0;
       for (const orb of nodes.slice(0, capacity)) {
         const effect = effectsById.get(orb.id);
         const age = effect ? time - effect.time : 100;
         const selected = input.selectedOrb === orb.id;
-        const birth = effect?.kind === "creation";
+        const birth = effect?.kind === "creation" && activeBirths.has(orb.id);
         const complete = effect?.kind === "completion";
         const deleting = effect?.kind === "deletion";
+        const anchor = anchors.get(orb.id);
         at(orb, halos, target);
         pos.copy(target);
         let alpha = 1;
         if (birth) {
-          const t = T.MathUtils.smoothstep(age, 0.28, 1.65);
-          pos.lerpVectors(source, target, t);
-          alpha = T.MathUtils.smoothstep(age, 0, 0.35);
+          const phase = creationPhase(age);
+          routePoint(Math.max(0.55, phase.t), routeNode(orb.id), target, pos);
+          alpha = phase.materialize;
         }
         if (effect?.kind === "move" && effect.from) {
           const t = T.MathUtils.smoothstep(age, 0, 1.6);
@@ -192,14 +230,30 @@ export function createOrbLayer(
           at({ ...effect.from, angle }, halos, from);
           at({ ...orb, angle }, halos, target);
           pos.lerpVectors(from, target, t);
+          if (anchor) {
+            pos.lerpVectors(anchor.position, target, t);
+            alpha = T.MathUtils.lerp(anchor.alpha, 1, t);
+          }
         }
         if (complete) {
+          if (anchor) pos.copy(anchor.position);
           pos.lerp(source, T.MathUtils.smoothstep(age, 0.18, 1.85));
-          alpha = 1 - T.MathUtils.smoothstep(age, 1.35, 2.4);
+          alpha =
+            (anchor?.alpha ?? 1) * (1 - T.MathUtils.smoothstep(age, 1.35, 2.4));
         }
-        if (deleting) alpha = 1 - T.MathUtils.smoothstep(age, 0, 1.05);
+        if (deleting) {
+          if (anchor) pos.copy(anchor.position);
+          alpha =
+            (anchor?.alpha ?? 1) * (1 - T.MathUtils.smoothstep(age, 0, 1.05));
+        }
+        if (effect?.kind === "creation" && anchor) {
+          const t = T.MathUtils.smoothstep(age, 0, 1.6);
+          pos.lerpVectors(anchor.position, target, t);
+          alpha = T.MathUtils.lerp(anchor.alpha, 1, t);
+        }
         const size =
           orb.size *
+          (birth ? 0.25 + alpha * 0.75 : 1) *
           (selected ? 1.5 : 1) *
           (complete
             ? 1 + Math.sin(Math.min(age / 2.4, 1) * Math.PI) * 0.65
@@ -230,25 +284,7 @@ export function createOrbLayer(
           index * 0.73,
         );
         if (!complete && !deleting) positions.set(orb.id, pos.clone());
-        if ((birth || complete) && age < 1.9 && arcIndex < 48) {
-          const end = pos.clone();
-          const start = source;
-          for (let step = 0; step < 18; step++) {
-            for (let side = 0; side < 2; side++) {
-              const t = (step + side) / 18;
-              from.lerpVectors(start, end, t);
-              const bend =
-                Math.sin(t * Math.PI) * 0.13 * Math.sin(step * 2.7 + time * 29);
-              from.x += bend;
-              from.z += bend * 0.6;
-              from.toArray(
-                arcPositions,
-                (arcIndex * 18 * 2 + step * 2 + side) * 3,
-              );
-            }
-          }
-          arcIndex++;
-        }
+        presentation.set(orb.id, { position: pos.clone(), alpha });
         index++;
       }
       aura.count = cores.count = index;
@@ -256,12 +292,8 @@ export function createOrbLayer(
       if (aura.instanceColor) aura.instanceColor.needsUpdate = true;
       if (cores.instanceColor) cores.instanceColor.needsUpdate = true;
       states.needsUpdate = true;
-      arcGeometry.setDrawRange(0, arcIndex * 18 * 2);
-      arcGeometry.attributes.position.needsUpdate = true;
-      if (force || time - lastReport > 0.1) {
-        lastReport = time;
-        hooks.projectOrbs?.(projectOrbs(positions, camera, input.selectedOrb));
-      }
+      // Synchronous with the exact transforms used by this rendered frame.
+      hooks.projectOrbs?.(projectOrbs(positions, camera, input.selectedOrb));
       return `${positions.size} active / ${(input.orbs || []).length} sessions · ${count} transitions · ${last}`;
     },
     dispose() {
@@ -275,8 +307,7 @@ export function createOrbLayer(
       material.dispose();
       coreGeometry.dispose();
       coreMaterial.dispose();
-      arcGeometry.dispose();
-      arcMaterial.dispose();
+      routes.dispose();
     },
   };
 }

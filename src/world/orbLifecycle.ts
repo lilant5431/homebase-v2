@@ -1,4 +1,6 @@
 import type { WorldOrb } from "./contract";
+export const CREATION_SECONDS = 4.6;
+export const MAX_ENERGY_ROUTES = 4;
 export type OrbEffect = {
   id: string;
   kind: "creation" | "move" | "completion" | "deletion" | "selection";
@@ -27,7 +29,11 @@ export function createOrbLifecycle(
       // One latest transition per ID: rapid edits replace rather than queue ghosts.
       effects = quiet
         ? []
-        : effects.filter((effect) => time - effect.time < 2.8);
+        : effects.filter(
+            (effect) =>
+              time - effect.time <
+              (effect.kind === "creation" ? CREATION_SECONDS : 2.8),
+          );
       const emit = (effect: OrbEffect) => {
         effects = [...effects.filter((e) => e.id !== effect.id), effect].slice(
           -48,
@@ -49,7 +55,8 @@ export function createOrbLifecycle(
             !orb.completed &&
             (old.angle !== orb.angle ||
               old.lane !== orb.lane ||
-              old.spread !== orb.spread)
+              old.spread !== orb.spread ||
+              old.radialOffset !== orb.radialOffset)
           )
             emit({ id: orb.id, kind: "move", time, from: old, to: orb });
         }
@@ -73,7 +80,11 @@ export function createOrbLifecycle(
       selection = chosen;
     },
     sample(time: number) {
-      effects = effects.filter((e) => time >= e.time && time - e.time < 2.8);
+      effects = effects.filter(
+        (e) =>
+          time >= e.time &&
+          time - e.time < (e.kind === "creation" ? CREATION_SECONDS : 2.8),
+      );
       return { effects, count, last };
     },
     clear() {

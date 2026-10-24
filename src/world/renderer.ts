@@ -285,24 +285,38 @@ export function createWorld(
       const radius = 7.1 + i * 0.9;
       const rails = new T.Group();
       const arcGeometry = own(
-        new T.TorusGeometry(radius, 0.105, 12, 64, Math.PI / 3 - 0.065),
+        new T.TorusGeometry(radius, 0.085, 12, 80, Math.PI / 2 - 0.075),
       );
       const channelGeometry = own(
-        new T.TorusGeometry(radius + 0.13, 0.028, 10, 64, Math.PI / 3 - 0.13),
+        new T.TorusGeometry(radius + 0.13, 0.028, 10, 80, Math.PI / 2 - 0.12),
       );
-      const collarGeometry = own(new T.BoxGeometry(0.26, 0.32, 0.22));
-      for (let j = 0; j < 6; j++) {
+      const collarGeometry = own(new T.BoxGeometry(0.3, 0.5, 0.18));
+      for (let j = 0; j < 4; j++) {
         const segment = new T.Mesh(arcGeometry, platinum);
-        segment.rotation.z = (j * Math.PI) / 3;
+        segment.rotation.z = (j * Math.PI) / 2 + 0.04;
         rails.add(segment);
         const channel = new T.Mesh(channelGeometry, resonance);
-        channel.rotation.z = (j * Math.PI) / 3 + 0.03;
+        channel.rotation.z = (j * Math.PI) / 2 + 0.06;
         rails.add(channel);
-        const a = (j * Math.PI) / 3 - 0.025;
+        const a = Math.PI / 2 - (j * Math.PI) / 2;
         const collar = new T.Mesh(collarGeometry, ceramic);
         collar.position.set(Math.cos(a) * radius, Math.sin(a) * radius, 0);
         collar.rotation.z = a;
         rails.add(collar);
+        // Four readable quarter-day gates, with one to four small luminous pins.
+        for (let pin = 0; pin <= j; pin++) {
+          const marker = new T.Mesh(
+            own(new T.BoxGeometry(0.065, 0.12, 0.22)),
+            whiteLight,
+          );
+          marker.position.set(
+            Math.cos(a) * (radius + 0.2) + Math.sin(a) * (pin - j / 2) * 0.12,
+            Math.sin(a) * (radius + 0.2) - Math.cos(a) * (pin - j / 2) * 0.12,
+            0.12,
+          );
+          marker.rotation.z = a;
+          rails.add(marker);
+        }
       }
       halo.add(rails);
       halo.position.set(0, 6.1 + i * 0.4, 0);
@@ -311,12 +325,14 @@ export function createWorld(
       halos.push(halo);
     }
     const tickGeometry = own(new T.BoxGeometry(0.018, 0.12, 0.12));
+    const latticeTicks: T.Mesh[] = [];
     for (let i = 0; i < 96; i++) {
       const a = (i / 96) * Math.PI * 2;
       const tick = new T.Mesh(tickGeometry, i % 8 === 0 ? whiteLight : metal);
       tick.position.set(Math.sin(a) * 5.5, 0, Math.cos(a) * 5.5);
       tick.rotation.y = a;
       scene.add(tick);
+      latticeTicks.push(tick);
     }
     for (const radius of [4.7, 5.7, 10.5]) {
       const ring = new T.Mesh(
@@ -501,8 +517,13 @@ export function createWorld(
       worstFrame = 0;
     const lightEvents = createLightEvents(initial);
     const orbLayer = own(
-      createOrbLayer(scene, initial, hooks, (kind, strength, time) =>
-        lightEvents.pulse(kind, strength, time, input.reducedMotion),
+      createOrbLayer(
+        scene,
+        initial,
+        hooks,
+        (kind, strength, time) =>
+          lightEvents.pulse(kind, strength, time, input.reducedMotion),
+        latticeTicks,
       ),
     );
     let railPhase = 0,
@@ -630,7 +651,20 @@ export function createWorld(
           .copy(tint.value)
           .multiplyScalar(0.4 + drive.energy * 0.55);
         halos.forEach((halo, i) => {
-          if (i === 2) {
+          if (input.orbs) {
+            // Inner/low = past dates; middle = today; outer/high = future dates.
+            halo.scale.setScalar(0.82);
+            halo.position.set(
+              0,
+              4.7 + i * 1.1 + Math.sin(drive.phase) * 0.04,
+              0,
+            );
+            halo.rotation.set(
+              Math.PI / 2 + [-0.16, 0.08, 0.28][i],
+              0,
+              railPhase * 0.025,
+            );
+          } else if (i === 2) {
             halo.scale.setScalar(0.32);
             halo.position.copy(beamOrigin).addScaledVector(beamAxis, 0.2);
             halo.quaternion.setFromUnitVectors(
@@ -655,12 +689,14 @@ export function createWorld(
             );
           }
         });
-        constellation = orbLayer.render(
-          elapsed,
-          halos,
-          camera,
-          input.reducedMotion,
+        constellation = orbLayer.render(elapsed, halos, camera);
+        const routedEnergy = orbLayer.energy();
+        circuit.uFlash.value = Math.min(
+          1.5,
+          response.flash + routedEnergy * 0.65,
         );
+        pedestalLight.intensity = 35 * drive.energy * (1 + routedEnergy * 1.2);
+        sourceLight.intensity *= 1 + routedEnergy * 0.45;
         if (
           timer &&
           pendingQuery &&

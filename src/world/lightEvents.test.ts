@@ -38,7 +38,7 @@ describe("interaction light wavefronts", () => {
         },
         i * 0.1,
       );
-    expect(circuit.sample(3).events).toHaveLength(8);
+    expect(circuit.sample(3).events).toHaveLength(4);
     expect(circuit.sample(3).reason).toBe("Navigation");
     circuit.update({ ...base, area: "assignments", beacon: false }, 3.1);
     expect(circuit.sample(3.1).reason).toBe("Beacon");

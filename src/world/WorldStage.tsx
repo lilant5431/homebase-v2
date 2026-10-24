@@ -39,9 +39,19 @@ export default function WorldStage({
   const [still, setStill] = useState(false);
   const [labOpen, setLabOpen] = useState(orbs === undefined);
   const [projections, setProjections] = useState<OrbProjection[]>([]);
+  const targetElements = useRef(new Map<string, HTMLButtonElement>());
+  const framePoints = useRef(new Map<string, OrbProjection>());
+  const targetIds = useRef("");
   const capture = useRef<ReturnType<typeof captureWorld> | null>(null);
   const [recording, setRecording] = useState(false),
     [captureMessage, setCaptureMessage] = useState("");
+  const [clipUrl, setClipUrl] = useState("");
+  useEffect(
+    () => () => {
+      if (clipUrl) URL.revokeObjectURL(clipUrl);
+    },
+    [clipUrl],
+  );
   const [metricsOpen, setMetricsOpen] = useState(false);
   const [beacon, setBeacon] = useState(true);
   const [power, setPower] = useState(1);
@@ -87,6 +97,8 @@ export default function WorldStage({
     if (disabled || !canvas.current) return;
     setFailure("");
     setStats(null);
+    targetIds.current = "";
+    framePoints.current.clear();
     setProjections([]);
     const started = performance.now();
     let startup = 0;
@@ -105,7 +117,20 @@ export default function WorldStage({
           setProjections([]);
         },
         projectOrbs(value) {
-          setProjections(value);
+          framePoints.current = new Map(value.map((p) => [p.id, p]));
+          for (const [id, element] of targetElements.current) {
+            const point = framePoints.current.get(id);
+            element.hidden = !point;
+            if (point) {
+              element.style.left = `${point.x}%`;
+              element.style.top = `${point.y}%`;
+            }
+          }
+          const ids = JSON.stringify(value.map((p) => p.id));
+          if (ids !== targetIds.current) {
+            targetIds.current = ids;
+            setProjections(value);
+          }
         },
       },
       () => import("./renderer"),
@@ -156,8 +181,20 @@ export default function WorldStage({
               orb && (
                 <button
                   key={point.id}
+                  ref={(element) => {
+                    if (!element) {
+                      targetElements.current.delete(point.id);
+                      return;
+                    }
+                    targetElements.current.set(point.id, element);
+                    const current = framePoints.current.get(point.id);
+                    element.hidden = !current;
+                    if (current) {
+                      element.style.left = `${current.x}%`;
+                      element.style.top = `${current.y}%`;
+                    }
+                  }}
                   className="world-orb-target"
-                  style={{ left: `${point.x}%`, top: `${point.y}%` }}
                   aria-label={`Select orb: ${orb.label}`}
                   aria-pressed={selectedOrb === point.id}
                   onClick={() => onSelectOrb(point.id)}
@@ -171,6 +208,7 @@ export default function WorldStage({
       )}
       <details
         className="gem-lab"
+        hidden={orbs !== undefined && metricsOpen}
         open={labOpen}
         onToggle={(e) => {
           const open = e.currentTarget.open;
@@ -285,6 +323,7 @@ export default function WorldStage({
       </div>
       <details
         className="world-diagnostics"
+        hidden={orbs !== undefined && labOpen}
         open={metricsOpen}
         onToggle={(e) => {
           const open = e.currentTarget.open;
@@ -397,6 +436,7 @@ export default function WorldStage({
                     return;
                   }
                   try {
+                    setClipUrl("");
                     setCaptureMessage("");
                     capture.current = captureWorld(canvas.current!, (blob) => {
                       setRecording(false);
@@ -407,7 +447,7 @@ export default function WorldStage({
                       a.href = url;
                       a.download = "lumimark-constellation.webm";
                       a.click();
-                      setTimeout(() => URL.revokeObjectURL(url), 1000);
+                      setClipUrl(url);
                       setCaptureMessage(
                         "World clip saved. The recording contains the rendered canvas only.",
                       );
@@ -451,6 +491,11 @@ export default function WorldStage({
             </button>
           </div>
           {captureMessage && <p role="status">{captureMessage}</p>}
+          {clipUrl && (
+            <a href={clipUrl} download="lumimark-energy-world.webm">
+              Download latest world clip
+            </a>
+          )}
           <small>
             FPS measures submitted frames, not display scanout. Color-buffer
             estimate excludes depth, shadows, environment maps and driver

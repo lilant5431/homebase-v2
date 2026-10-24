@@ -1,20 +1,32 @@
 import { lumenDrive } from "./lumenDrive";
 import type { WorldInput } from "./contract";
 export type LightEvent = { time: number; strength: number; reason: string };
-// Eight bounded, non-repeating wavefronts. This boundary sees presentation state only.
+// Four bounded, non-repeating wavefronts; rapid inputs share one wavefront.
 export function createLightEvents(initial: WorldInput) {
   let previous = { ...initial };
   let anchor = lumenDrive(initial, 0);
   let events: LightEvent[] = [];
   let count = 0;
   let reason = "Idle · no interaction wave";
+  function emit(event: LightEvent) {
+    events = events.filter((e) => event.time - e.time < 5);
+    const last = events.at(-1);
+    if (last && event.time - last.time >= 0 && event.time - last.time < 0.22) {
+      events[events.length - 1] = {
+        ...last,
+        strength: Math.max(last.strength, event.strength),
+        reason: event.reason,
+      };
+    } else events = [...events, event].slice(-4);
+  }
   return {
     pulse(cause: string, strength: number, time: number, quiet = false) {
       if (quiet || !Number.isFinite(time)) return;
-      events = [
-        ...events.filter((e) => time - e.time < 5),
-        { time, strength, reason: cause },
-      ].slice(-8);
+      emit({
+        time,
+        strength: Math.min(1.15, Math.max(0, strength)),
+        reason: cause,
+      });
       count++;
       reason = cause;
     },
@@ -45,21 +57,18 @@ export function createLightEvents(initial: WorldInput) {
         events = [];
         anchor = drive;
       } else if (cause && Number.isFinite(time)) {
-        events = [
-          ...events.filter((e) => time - e.time < 5),
-          {
-            time,
-            strength: changedArea
-              ? 0.95
-              : changedBeam
-                ? 0.85
-                : Math.min(
-                    1,
-                    0.45 + Math.max(energyChange, focusChange, powerDelta),
-                  ),
-            reason: cause,
-          },
-        ].slice(-8);
+        emit({
+          time,
+          strength: changedArea
+            ? 0.95
+            : changedBeam
+              ? 0.85
+              : Math.min(
+                  1,
+                  0.45 + Math.max(energyChange, focusChange, powerDelta),
+                ),
+          reason: cause,
+        });
         count++;
         reason = cause;
         anchor = drive;
