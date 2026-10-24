@@ -9,6 +9,15 @@ export function createLightEvents(initial: WorldInput) {
   let count = 0;
   let reason = "Idle · no interaction wave";
   return {
+    pulse(cause: string, strength: number, time: number, quiet = false) {
+      if (quiet || !Number.isFinite(time)) return;
+      events = [
+        ...events.filter((e) => time - e.time < 5),
+        { time, strength, reason: cause },
+      ].slice(-8);
+      count++;
+      reason = cause;
+    },
     update(next: WorldInput, time: number) {
       const drive = lumenDrive(next, 0);
       const powerDelta = Math.abs(

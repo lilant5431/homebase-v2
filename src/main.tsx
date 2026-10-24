@@ -315,7 +315,7 @@ function App() {
             DESIGNED FOR A LITTLE MORE CLARITY.
             <span>
               <span className="saved-dot" />
-              Schema v2 · Saved locally
+              Schema v3 · Saved locally
             </span>
           </footer>
         </main>
@@ -348,6 +348,9 @@ function App() {
   );
 }
 const CrystalWorkspace = lazy(() => import("./demo/CrystalWorkspace"));
+const ConstellationWorkspace = lazy(
+  () => import("./constellation/ConstellationWorkspace"),
+);
 function Entry() {
   const [route, setRoute] = useState(() => location.hash);
   useEffect(() => {
@@ -355,8 +358,12 @@ function Entry() {
     window.addEventListener("hashchange", update);
     return () => window.removeEventListener("hashchange", update);
   }, []);
-  const world = route === "#world" || route === "#crystal";
-  return route.startsWith("#auditions") || world ? (
+  const world = route === "#world" || route === "#demo";
+  return route === "#crystal" ? (
+    <Suspense fallback={<p role="status">Opening your constellation…</p>}>
+      <ConstellationWorkspace />
+    </Suspense>
+  ) : route.startsWith("#auditions") || world ? (
     <Suspense fallback={<p role="status">Opening Lumen World…</p>}>
       <CrystalWorkspace />
     </Suspense>

@@ -1,0 +1,46 @@
+- generic "Orb selection":
+  - 'button "Select orb: The architecture of memory · 2026-10-19 13:00"':
+    - generic: Unfinished
+- group "Lumen environment controls":
+  - generic "Lumen / light chamber"
+- generic: 01 / MY WEEK / CRYSTAL WORLD
+- generic: LIVE · WEBGL 2
+- generic "World instrument panel 144 FPS":
+  - text: World instrument panel
+  - generic: 144 FPS
+- paragraph: Convex facet tracing · coherent transmission · 3 internal segments · filtered 1024² probe · analytic spine / 64-step atmosphere · 4× HDR MSAA
+- term: Startup / first rendered frame
+- definition: 333 ms
+- term: Rendered frame rate
+- definition: 144.2 FPS
+- term: Frame interval p95 / worst
+- definition: 8.9 / 124.7 ms
+- term: CPU update + render submission
+- definition: 2.0 ms
+- term: GPU timer (sampled)
+- definition: 1.8 ms
+- term: Draw calls / triangles incl. passes
+- definition: 563 / 378,462
+- term: Geometries / textures / programs
+- definition: 40 / 18 / 39
+- term: Render buffer resolution
+- definition: 1600 × 1000
+- term: Estimated HDR color buffers only
+- definition: ~287.3 MB
+- term: Rendered frames / world time
+- definition: 33394 / 246.6 s
+- term: Camera position
+- definition: 9.37, 7.26, 24.84
+- term: Light response
+- definition: 12 events · Session deletion · 0 active
+- term: Motion
+- definition: Live
+- term: Constellation
+- definition: 2 active / 3 sessions · 8 transitions · deletion
+- paragraph: ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 (0x00002D05) Direct3D11 vs_5_0 ps_5_0, D3D11)
+- button "Record world (60s max)" [active]
+- button "Freeze world motion"
+- button "Test startup failure"
+- button "Test context loss"
+- status: World clip saved. The recording contains the rendered canvas only.
+- text: FPS measures submitted frames, not display scanout. Color-buffer estimate excludes depth, shadows, environment maps and driver overhead. No automatic quality downgrade.

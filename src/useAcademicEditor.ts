@@ -54,8 +54,11 @@ export function useAcademicEditor(
         const a = state.assignments.find((a) => a.id === id);
         if (id && !a) throw Error("Assignment no longer exists.");
         const block: Block = {
+          ...(editing?.id ? editing : {}),
           id: editing?.id || crypto.randomUUID(),
           ...(a ? { assignmentId: a.id } : {}),
+          assignmentId: a?.id,
+          sessionCompleted: a ? editing?.sessionCompleted : undefined,
           title: a?.title || String(f.get("title")).trim(),
           start: String(f.get("start")),
           end: String(f.get("end")),

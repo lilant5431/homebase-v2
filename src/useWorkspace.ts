@@ -52,16 +52,19 @@ export function useWorkspace() {
     if (await mutate(() => store.restore(raw, revision)))
       setNotice("Backup restored. Undo last save is available.");
   };
-  function exportData(recovery = false) {
+  function exportData(recovery: boolean | "legacy" = false) {
     try {
       // Recovery is a verbatim diagnostic copy, exempt from normal-backup limits.
-      const blob = recovery
-        ? new Blob([store.exportRecovery()], { type: "application/json" })
-        : createBackupBlob(state);
+      const blob =
+        recovery === "legacy"
+          ? new Blob([store.exportLegacy()], { type: "application/json" })
+          : recovery
+            ? new Blob([store.exportRecovery()], { type: "application/json" })
+            : createBackupBlob(state);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `homebase-${recovery ? "recovery" : "backup"}.json`;
+      a.download = `homebase-${recovery === "legacy" ? "pre-migration-v2" : recovery ? "recovery" : "backup"}.json`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {

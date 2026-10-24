@@ -1,0 +1,48 @@
+- generic "Orb selection":
+  - 'button "Select orb: The architecture of memory · 2026-10-19 13:00" [pressed]':
+    - generic: Unfinished
+  - 'button "Select orb: Constellation field study · 2026-10-25 10:00"':
+    - generic: Study
+- group "Lumen environment controls":
+  - generic "Lumen / light chamber"
+- generic: 02 / ARCHIVE / CRYSTAL WORLD
+- generic: REDUCED — STATIC · WEBGL 2
+- generic "World instrument panel Paused":
+  - text: World instrument panel
+  - generic: Paused
+- paragraph: Convex facet tracing · coherent transmission · 3 internal segments · filtered 1024² probe · analytic spine / 64-step atmosphere · 4× HDR MSAA
+- term: Startup / first rendered frame
+- definition: 318 ms
+- term: Rendered frame rate
+- definition: 0.0 FPS
+- term: Frame interval p95 / worst
+- definition: 0.0 / 219.4 ms
+- term: CPU update + render submission
+- definition: 2.7 ms
+- term: GPU timer (sampled)
+- definition: 1.5 ms
+- term: Draw calls / triangles incl. passes
+- definition: 565 / 369,774
+- term: Geometries / textures / programs
+- definition: 40 / 18 / 39
+- term: Render buffer resolution
+- definition: 1585 × 1000
+- term: Estimated HDR color buffers only
+- definition: ~286.0 MB
+- term: Rendered frames / world time
+- definition: 22423 / 170.3 s
+- term: Camera position
+- definition: 5.70, 8.70, -24.12
+- term: Light response
+- definition: 9 events · Session creation · 0 active
+- term: Motion
+- definition: Reduced — static
+- term: Constellation
+- definition: 2 active / 4 sessions · 7 transitions · creation
+- paragraph: ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 (0x00002D05) Direct3D11 vs_5_0 ps_5_0, D3D11)
+- button "Record world (60s max)"
+- button "Resume world motion" [pressed]
+- button "Test startup failure"
+- button "Test context loss"
+- status: World clip saved. The recording contains the rendered canvas only.
+- text: FPS measures submitted frames, not display scanout. Color-buffer estimate excludes depth, shadows, environment maps and driver overhead. No automatic quality downgrade.

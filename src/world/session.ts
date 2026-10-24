@@ -17,6 +17,9 @@ export function startWorldSession(
   let controller: WorldController | undefined;
   let input = initial;
   const guarded: WorldHooks = {
+    projectOrbs: (value) => {
+      if (!closed) hooks.projectOrbs?.(value);
+    },
     metrics: (value) => {
       if (!closed) hooks.metrics(value);
     },

@@ -1,0 +1,76 @@
+Lumen / light chamber
+World instrument panel
+142 FPS
+
+Convex facet tracing · coherent transmission · 3 internal segments · filtered 1024² probe · analytic spine / 64-step atmosphere · 4× HDR MSAA
+
+Startup / first rendered frame
+356 ms
+Rendered frame rate
+141.9 FPS
+Frame interval p95 / worst
+9.3 / 145.4 ms
+CPU update + render submission
+1.9 ms
+GPU timer (sampled)
+1.5 ms
+Draw calls / triangles incl. passes
+557 / 372,726
+Geometries / textures / programs
+39 / 18 / 39
+Render buffer resolution
+1264 × 719
+Estimated HDR color buffers only
+~229.7 MB
+Rendered frames / world time
+3594 / 25.5 s
+Camera position
+9.65, 7.19, 24.73
+Light response
+0 events · Idle · no interaction wave · 0 active
+Motion
+Live
+Constellation
+1 active / 1 sessions · 0 transitions · Existing schedule · no arrival effects
+
+ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 (0x00002D05) Direct3D11 vs_5_0 ps_5_0, D3D11)
+
+Record world (60s max)
+Freeze world motion
+Test startup failure
+Test context loss
+FPS measures submitted frames, not display scanout. Color-buffer estimate excludes depth, shadows, environment maps and driver overhead. No automatic quality downgrade.
+Back to planner
+lumimark
+Disable graphics
+Constellation
+Assignments
+Planning studio
+YOUR WORK, HELD IN LIGHT
+A little focus.
+A wider universe.
+
+1 unfinished session · 1 past scheduled time
+
+Schedule time
+New assignment
+Study sessions
+1 SAVED
+Show sessions
+Unfinished
+Past scheduled time
+Completed sessions
+All sessions
+
+Monday–Thursday follow the inner rail; Friday–Sunday follow the outer rail. Angle marks the day and time. Larger lights hold longer sessions.
+
+The architecture of memory
+2026-10-19 · 13:00 · 60 min
+Past scheduled time · unfinished
+↗
+Export backup
+Restore backup
+Undo last save
+Recovery data
+Export pre-migration v2
+SCHEMA v3 · SAVED ON THIS DEVICE

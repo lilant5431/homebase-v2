@@ -1,17 +1,30 @@
 import { useEffect, useRef, useState } from "react";
 import { startWorldSession } from "./session";
-import { viewpoints, type WorldArea, type WorldMetrics } from "./contract";
+import { captureWorld } from "./capture";
+import {
+  viewpoints,
+  type WorldArea,
+  type WorldMetrics,
+  type WorldOrb,
+  type OrbProjection,
+} from "./contract";
 import "./world.css";
 export default function WorldStage({
   area,
   emphasis,
   disabled,
   centered,
+  orbs,
+  selectedOrb,
+  onSelectOrb,
 }: {
   area: WorldArea;
   emphasis: boolean;
   disabled: boolean;
   centered: boolean;
+  orbs?: readonly WorldOrb[];
+  selectedOrb?: string | null;
+  onSelectOrb?: (id: string) => void;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const session = useRef<ReturnType<typeof startWorldSession>>(null);
@@ -24,7 +37,11 @@ export default function WorldStage({
       matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
   const [still, setStill] = useState(false);
-  const [labOpen, setLabOpen] = useState(true);
+  const [labOpen, setLabOpen] = useState(orbs === undefined);
+  const [projections, setProjections] = useState<OrbProjection[]>([]);
+  const capture = useRef<ReturnType<typeof captureWorld> | null>(null);
+  const [recording, setRecording] = useState(false),
+    [captureMessage, setCaptureMessage] = useState("");
   const [metricsOpen, setMetricsOpen] = useState(false);
   const [beacon, setBeacon] = useState(true);
   const [power, setPower] = useState(1);
@@ -42,6 +59,8 @@ export default function WorldStage({
     beamWidth,
     orbit,
     elevation,
+    orbs,
+    selectedOrb,
   });
   latest.current = {
     area,
@@ -53,6 +72,8 @@ export default function WorldStage({
     beamWidth,
     orbit,
     elevation,
+    orbs,
+    selectedOrb,
   };
   useEffect(() => {
     const media = matchMedia("(prefers-reduced-motion: reduce)");
@@ -62,9 +83,11 @@ export default function WorldStage({
     return () => media.removeEventListener("change", update);
   }, []);
   useEffect(() => {
+    setRecording(false);
     if (disabled || !canvas.current) return;
     setFailure("");
     setStats(null);
+    setProjections([]);
     const started = performance.now();
     let startup = 0;
     const current = startWorldSession(
@@ -75,7 +98,14 @@ export default function WorldStage({
           setStats({ ...value, startupMs: startup });
         },
         error(error) {
+          capture.current?.cancel();
+          capture.current = null;
+          setRecording(false);
           setFailure(error.message);
+          setProjections([]);
+        },
+        projectOrbs(value) {
+          setProjections(value);
         },
       },
       () => import("./renderer"),
@@ -86,6 +116,8 @@ export default function WorldStage({
     session.current = current;
     return () => {
       current.dispose();
+      capture.current?.cancel();
+      capture.current = null;
       session.current = null;
     };
   }, [disabled, attempt]);
@@ -102,6 +134,8 @@ export default function WorldStage({
     beamWidth,
     orbit,
     elevation,
+    orbs,
+    selectedOrb,
   ]);
   return (
     <>
@@ -114,6 +148,27 @@ export default function WorldStage({
           />
         )}
       </div>
+      {onSelectOrb && !disabled && !failure && (
+        <div className="world-orb-targets" aria-label="Orb selection">
+          {projections.map((point) => {
+            const orb = orbs?.find((orb) => orb.id === point.id);
+            return (
+              orb && (
+                <button
+                  key={point.id}
+                  className="world-orb-target"
+                  style={{ left: `${point.x}%`, top: `${point.y}%` }}
+                  aria-label={`Select orb: ${orb.label}`}
+                  aria-pressed={selectedOrb === point.id}
+                  onClick={() => onSelectOrb(point.id)}
+                >
+                  <span>{orb.overdue ? "Unfinished" : "Study"}</span>
+                </button>
+              )
+            );
+          })}
+        </div>
+      )}
       <details
         className="gem-lab"
         open={labOpen}
@@ -323,10 +378,51 @@ export default function WorldStage({
                 <dt>Motion</dt>
                 <dd>{stats.motion}</dd>
               </div>
+              {orbs && (
+                <div>
+                  <dt>Constellation</dt>
+                  <dd>{stats.constellation}</dd>
+                </div>
+              )}
             </dl>
           )}
           {stats && <p className="world-gpu">{stats.gpu}</p>}
           <div className="world-diagnostic-actions">
+            {orbs && (
+              <button
+                disabled={!stats || disabled || !!failure}
+                onClick={() => {
+                  if (recording) {
+                    capture.current?.stop();
+                    return;
+                  }
+                  try {
+                    setCaptureMessage("");
+                    capture.current = captureWorld(canvas.current!, (blob) => {
+                      setRecording(false);
+                      capture.current = null;
+                      if (!blob) return;
+                      const url = URL.createObjectURL(blob),
+                        a = document.createElement("a");
+                      a.href = url;
+                      a.download = "lumimark-constellation.webm";
+                      a.click();
+                      setTimeout(() => URL.revokeObjectURL(url), 1000);
+                      setCaptureMessage(
+                        "World clip saved. The recording contains the rendered canvas only.",
+                      );
+                    });
+                    setRecording(true);
+                  } catch (error) {
+                    setCaptureMessage(
+                      error instanceof Error ? error.message : String(error),
+                    );
+                  }
+                }}
+              >
+                {recording ? "Stop recording" : "Record world (60s max)"}
+              </button>
+            )}
             <button
               aria-pressed={still}
               onClick={() => setStill(!still)}
@@ -354,6 +450,7 @@ export default function WorldStage({
               Test context loss
             </button>
           </div>
+          {captureMessage && <p role="status">{captureMessage}</p>}
           <small>
             FPS measures submitted frames, not display scanout. Color-buffer
             estimate excludes depth, shadows, environment maps and driver
@@ -379,7 +476,7 @@ export default function WorldStage({
             Retry graphics
           </button>
           <span>
-            Your demo calendar, assignments and planning controls still work.
+            Your calendar, assignments and planning controls still work.
           </span>
         </div>
       )}
