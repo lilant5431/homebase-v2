@@ -68,7 +68,7 @@ describe("deterministic scheduling boundary", () => {
   it("rejects invalid calendar dates and malformed backups", () => {
     const s = seed();
     expect(() =>
-      parseState(JSON.stringify({ ...s, schemaVersion: 3 })),
+      parseState(JSON.stringify({ ...s, schemaVersion: 4 })),
     ).toThrow();
     s.assignments[0].dueDate = "2026-02-30T10:00";
     expect(() => parseState(JSON.stringify(s))).toThrow();

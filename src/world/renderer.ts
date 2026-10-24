@@ -1,6 +1,7 @@
 import * as T from "three";
 import { lumenDrive } from "./lumenDrive";
 import { createLightEvents } from "./lightEvents";
+import { createOrbLayer } from "./orbLayer";
 import { Reflector } from "three/addons/objects/Reflector.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
@@ -147,9 +148,9 @@ export function createWorld(
     const camera = new T.PerspectiveCamera(43, 1, 0.2, 140);
     const initialPose = viewpoints[initial.area];
     let orbitAngle: number = initialPose.angle;
-    let orbitRadius: number = initialPose.radius;
+    let orbitRadius: number = initialPose.radius * (initial.orbs ? 1.18 : 1);
     let orbitHeight: number = initialPose.height;
-    let compositionOffset = initial.centered ? 0 : 7.6;
+    let compositionOffset = initial.centered ? 0 : initial.orbs ? 3.8 : 7.6;
     const look = new T.Vector3();
     let lookHeight = initial.centered ? 8 : 6.1;
     const smoothPointer = new T.Vector2();
@@ -499,6 +500,14 @@ export function createWorld(
       startupMs = 0,
       worstFrame = 0;
     const lightEvents = createLightEvents(initial);
+    const orbLayer = own(
+      createOrbLayer(scene, initial, hooks, (kind, strength, time) =>
+        lightEvents.pulse(kind, strength, time, input.reducedMotion),
+      ),
+    );
+    let railPhase = 0,
+      constellation = "";
+    let selectionAngle: number | null = null;
     let frameTimes: number[] = [],
       submitTimes: number[] = [];
     resumeClock = () => {
@@ -523,13 +532,25 @@ export function createWorld(
         time.value = elapsed;
         const pose = viewpoints[input.area];
         const ease = input.reducedMotion ? 1 : 1 - Math.exp(-delta * 1.25);
-        orbitAngle += (pose.angle - orbitAngle) * ease;
+        const aimAngle = selectionAngle ?? pose.angle;
+        const turn = Math.atan2(
+          Math.sin(aimAngle - orbitAngle),
+          Math.cos(aimAngle - orbitAngle),
+        );
+        orbitAngle += turn * ease;
         orbitRadius +=
-          (pose.radius * (input.centered ? 1.22 : 1) - orbitRadius) * ease;
+          (pose.radius * (input.centered ? 1.22 : input.orbs ? 1.18 : 1) -
+            orbitRadius) *
+          ease;
         lookHeight += ((input.centered ? 8 : 6.1) - lookHeight) * ease;
         orbitHeight += (pose.height - orbitHeight) * ease;
         // A narrow viewport gets the centered sculpture; the HTML then stacks.
-        const offset = input.centered || width < 1000 ? 0 : 7.6;
+        const offset =
+          input.centered || input.selectedOrb || width < 1000
+            ? 0
+            : input.orbs
+              ? 3.8
+              : 7.6;
         compositionOffset += (offset - compositionOffset) * ease;
         if (input.reducedMotion) smoothPointer.set(0, 0);
         else smoothPointer.lerp(pointer, 1 - Math.exp(-delta * 2));
@@ -550,6 +571,7 @@ export function createWorld(
           Math.sin(angle) * compositionOffset,
         );
         camera.lookAt(look);
+        camera.updateMatrixWorld();
         movingLight.position.set(
           6 + smoothPointer.x * 7 + Math.sin(time.value * 0.3) * 4,
           9 + smoothPointer.y * 3,
@@ -564,6 +586,8 @@ export function createWorld(
         );
         tint.value.lerp(targetTint, input.reducedMotion ? 1 : ease);
         const drive = lumenDrive(input, elapsed, smoothPointer.length());
+        if (!input.reducedMotion)
+          railPhase += delta * (input.selectedOrb?.length ? 0.08 : 1);
         const response = lightEvents.sample(elapsed);
         circuit.uFlash.value = response.flash;
         circuit.uEvents.value.forEach((value, i) => {
@@ -626,10 +650,17 @@ export function createWorld(
             halo.rotation.set(
               Math.PI / 2 + (i === 0 ? -0.12 : 0.33),
               0,
-              drive.phase * (i === 0 ? 0.045 : -0.035),
+              (input.orbs ? railPhase : drive.phase) *
+                (i === 0 ? 0.045 : -0.035),
             );
           }
         });
+        constellation = orbLayer.render(
+          elapsed,
+          halos,
+          camera,
+          input.reducedMotion,
+        );
         if (
           timer &&
           pendingQuery &&
@@ -702,6 +733,7 @@ export function createWorld(
               .join(", "),
             motion: input.reducedMotion ? "Reduced — static" : "Live",
             response: `${response.count} events · ${response.reason} · ${response.events.length} active`,
+            constellation,
           });
           frameTimes = [];
           submitTimes = [];
@@ -725,7 +757,14 @@ export function createWorld(
     return {
       update(next) {
         if (disposed) return;
+        if (next.selectedOrb !== input.selectedOrb) {
+          const focus = next.selectedOrb
+            ? orbLayer.positionOf(next.selectedOrb)
+            : undefined;
+          selectionAngle = focus ? Math.atan2(focus.x, focus.z) + 0.65 : null;
+        }
         lightEvents.update(next, elapsed);
+        orbLayer.update(next, elapsed);
         input = next;
         if (compiled) visibilityChanged();
       },

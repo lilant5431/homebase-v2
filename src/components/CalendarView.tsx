@@ -158,7 +158,14 @@ export function CalendarView({
                       }}
                       onClick={() => open("block", b)}
                     >
-                      <small>{b.assignmentId ? "FOCUS TIME" : "CLASS"}</small>
+                      <small>
+                        {b.sessionCompleted
+                          ? "SESSION COMPLETE"
+                          : b.assignmentId
+                            ? "FOCUS TIME"
+                            : "CLASS"}
+                        {b.locked ? " · LOCKED" : ""}
+                      </small>
                       <strong>{b.title}</strong>
                       <span>
                         {date.toLocaleTimeString("en-US", {

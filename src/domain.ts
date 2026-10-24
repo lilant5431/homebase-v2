@@ -14,9 +14,12 @@ export type Block = {
   start: string;
   end: string;
   color: string;
+  /** Schema v3: absent means unfinished/unlocked. Assignment completion is separate. */
+  sessionCompleted?: boolean;
+  locked?: boolean;
 };
 export type State = {
-  schemaVersion: 2;
+  schemaVersion: 3;
   revision: number;
   assignments: Assignment[];
   blocks: Block[];
@@ -42,7 +45,7 @@ export function seed(): State {
     return `${localISO(d)}T${time}`;
   };
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     revision: 0,
     assignments: [
       {
@@ -129,7 +132,7 @@ export function seed(): State {
     ],
   };
 }
-// Schema v2 stores floating wall-clock values, not instants or a device zone.
+// Floating wall-clock values are not instants or a device zone.
 // Gregorian validation and duration arithmetic must not change when travelling.
 export function validDate(s: unknown): s is string {
   if (typeof s !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s))
@@ -151,7 +154,7 @@ const colors = ["lilac", "mint", "peach", "blue"];
 export function validateState(value: unknown): string[] {
   if (
     !object(value) ||
-    value.schemaVersion !== 2 ||
+    value.schemaVersion !== 3 ||
     !Number.isSafeInteger(value.revision) ||
     (value.revision as number) < 0 ||
     !Array.isArray(value.assignments) ||
@@ -159,7 +162,9 @@ export function validateState(value: unknown): string[] {
     value.assignments.length > 1000 ||
     value.blocks.length > 5000
   )
-    return ["Unsupported or invalid backup. Expected schema version 2."];
+    return [
+      "Unsupported or invalid backup. Expected schema version 3 (v2 imports are migrated).",
+    ];
   const errors: string[] = [];
   const assignments = new Map<string, Assignment>();
   const ids = new Set<string>();
@@ -194,6 +199,9 @@ export function validateState(value: unknown): string[] {
       b.end <= b.start ||
       b.start.slice(0, 10) !== b.end.slice(0, 10) ||
       !colors.includes(b.color as string) ||
+      (b.sessionCompleted !== undefined &&
+        (typeof b.sessionCompleted !== "boolean" || !b.assignmentId)) ||
+      (b.locked !== undefined && typeof b.locked !== "boolean") ||
       (b.assignmentId !== undefined &&
         (!text(b.assignmentId, 200) || !assignments.has(b.assignmentId)))
     ) {
@@ -257,7 +265,24 @@ export function serializeState(state: State): string {
 }
 export function parseState(raw: string): State {
   assertBackupSize(raw);
-  const value: unknown = JSON.parse(raw);
+  let value: unknown = JSON.parse(raw);
+  // Pure, lossless v2 migration. No storage write occurs on read. Old files have
+  // no session completion semantics, even if an unknown field happened to exist.
+  if (
+    object(value) &&
+    value.schemaVersion === 2 &&
+    Array.isArray(value.blocks)
+  ) {
+    if (
+      value.blocks.some(
+        (b) =>
+          object(b) &&
+          (b.sessionCompleted !== undefined || b.locked !== undefined),
+      )
+    )
+      throw Error("Legacy backup contains ambiguous session fields.");
+    value = { ...value, schemaVersion: 3 };
+  }
   assertState(value);
   return value;
 }

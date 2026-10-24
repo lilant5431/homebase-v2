@@ -1,7 +1,7 @@
 import type { State } from "./domain";
 export function evaluationState(): State {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     revision: 0,
     assignments: [
       {

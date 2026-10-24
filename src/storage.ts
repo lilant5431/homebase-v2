@@ -50,6 +50,19 @@ export class WorkspaceStore {
     const raw = serializeState(updated);
     const original = this.snapshot.raw;
     if (original !== null) {
+      // Retain the original v2 bytes once, before the first v3 primary write.
+      // Reverting application code alone cannot read v3 session semantics.
+      try {
+        if (
+          JSON.parse(original)?.schemaVersion === 2 &&
+          this.storage.getItem(KEY + ".schema-v2") === null
+        )
+          this.storage.setItem(KEY + ".schema-v2", original);
+      } catch (error) {
+        if (error instanceof SyntaxError) {
+          /* handled by recovery below */
+        } else throw error;
+      }
       let readable = true;
       try {
         parseState(original);
@@ -99,6 +112,12 @@ export class WorkspaceStore {
       return this.snapshot.raw;
     const raw = this.storage.getItem(KEY + ".recovery");
     if (raw === null) throw Error("No unreadable recovery data is available.");
+    return raw;
+  }
+  exportLegacy() {
+    const raw = this.storage.getItem(KEY + ".schema-v2");
+    if (raw === null)
+      throw Error("No pre-migration v2 snapshot is stored on this device.");
     return raw;
   }
 }

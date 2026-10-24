@@ -1,4 +1,21 @@
-// Presentation-only boundary. No academic data, persistence or inference enters the world.
+// Presentation-only boundary. No domain operations, storage or inference enters the world.
+export type WorldOrb = {
+  id: string;
+  label: string;
+  color: string;
+  angle: number;
+  lane: number;
+  spread: number;
+  size: number;
+  completed: boolean;
+  overdue: boolean;
+};
+export type OrbProjection = {
+  id: string;
+  x: number;
+  y: number;
+  visible: boolean;
+};
 export type WorldArea = "week" | "assignments" | "planning";
 export type WorldInput = {
   area: WorldArea;
@@ -10,6 +27,8 @@ export type WorldInput = {
   beacon?: boolean;
   power?: number;
   beamWidth?: number;
+  orbs?: readonly WorldOrb[];
+  selectedOrb?: string | null;
 };
 export type WorldMetrics = {
   startupMs: number;
@@ -32,10 +51,12 @@ export type WorldMetrics = {
   camera: string;
   motion: string;
   response?: string;
+  constellation?: string;
 };
 export type WorldHooks = {
   metrics: (value: WorldMetrics) => void;
   error: (error: Error) => void;
+  projectOrbs?: (orbs: OrbProjection[]) => void;
 };
 export type WorldController = {
   update: (input: WorldInput) => void;
