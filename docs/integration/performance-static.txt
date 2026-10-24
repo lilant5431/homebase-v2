@@ -1,0 +1,41 @@
+- link "Skip to workspace":
+  - /url: "#au-workspace"
+- group "Lumen environment controls":
+  - generic "Lumen / light chamber"
+- generic: 03 / POSSIBLE / CRYSTAL WORLD
+- generic: REDUCED — STATIC · WEBGL 2
+- generic "World instrument panel Paused":
+  - text: World instrument panel
+  - generic: Paused
+- paragraph: Convex facet tracing · coherent transmission · 3 internal segments · filtered 1024² probe · analytic spine / 64-step atmosphere · 4× HDR MSAA
+- term: Startup / first rendered frame
+- definition: 194 ms
+- term: Rendered frame rate
+- definition: 0.0 FPS
+- term: Frame interval p95 / worst
+- definition: 0.0 / 79.9 ms
+- term: CPU update + render submission
+- definition: 1.2 ms
+- term: GPU timer (sampled)
+- definition: 1.6 ms
+- term: Draw calls / triangles incl. passes
+- definition: 425 / 355,610
+- term: Geometries / textures / programs
+- definition: 36 / 18 / 33
+- term: Render buffer resolution
+- definition: 1585 × 1000
+- term: Estimated HDR color buffers only
+- definition: ~286.0 MB
+- term: Rendered frames / world time
+- definition: 1882 / 11.5 s
+- term: Camera position
+- definition: "-18.75, 6.60, -6.05"
+- term: Light response
+- definition: 0 events · Idle · no interaction wave · 0 active
+- term: Motion
+- definition: Reduced — static
+- paragraph: ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 (0x00002D05) Direct3D11 vs_5_0 ps_5_0, D3D11)
+- button "Resume world motion" [pressed]
+- button "Test startup failure"
+- button "Test context loss"
+- generic: FPS measures submitted frames, not display scanout. Color-buffer estimate excludes depth, shadows, environment maps and driver overhead. No automatic quality downgrade.

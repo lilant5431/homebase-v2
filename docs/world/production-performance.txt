@@ -1,0 +1,35 @@
+Three.js · custom GLSL transmission · 3-band dispersion · HDR bloom
+
+Startup / first rendered frame
+178 ms
+Rendered frame rate
+165.0 FPS
+Frame interval p95 / worst
+6.2 / 58.5 ms
+CPU update + render submission
+3.7 ms
+GPU timer (sampled)
+0.5 ms
+Draw calls / triangles incl. passes
+1616 / 165,690
+Geometries / textures / programs
+25 / 19 / 28
+Render buffer resolution
+1585 × 1000
+Estimated HDR color buffers only
+~47.4 MB
+Rendered frames / world time
+5199 / 31.6 s
+Camera position
+17.77, 7.34, 27.00
+Motion
+Live
+
+ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 (0x00002D05) Direct3D11 vs_5_0 ps_5_0, D3D11)
+
+Freeze world motion
+Record 8s world
+Test startup failure
+Test context loss
+
+FPS measures submitted frames, not display scanout. Color-buffer estimate excludes depth, shadows, environment maps and driver overhead. No automatic quality downgrade.

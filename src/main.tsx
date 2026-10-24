@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   CalendarDays,
@@ -78,7 +78,7 @@ function App() {
           <span className="brand-icon">
             <Gem size={24} />
           </span>
-          homebase<span className="v2">V2</span>
+          lumimark<span className="v2">V2</span>
         </a>
         <div className="workspace">
           <span className="avatar">A</span>
@@ -347,8 +347,44 @@ function App() {
     </div>
   );
 }
+const CrystalWorkspace = lazy(() => import("./demo/CrystalWorkspace"));
+function Entry() {
+  const [route, setRoute] = useState(() => location.hash);
+  useEffect(() => {
+    const update = () => setRoute(location.hash);
+    window.addEventListener("hashchange", update);
+    return () => window.removeEventListener("hashchange", update);
+  }, []);
+  const world = route === "#world" || route === "#crystal";
+  return route.startsWith("#auditions") || world ? (
+    <Suspense fallback={<p role="status">Opening Lumen World…</p>}>
+      <CrystalWorkspace />
+    </Suspense>
+  ) : (
+    <>
+      <App />
+      <a
+        href="#crystal"
+        style={{
+          position: "fixed",
+          bottom: 8,
+          right: 16,
+          zIndex: 20,
+          fontSize: 11,
+          padding: "7px 12px",
+          background: "#17272e",
+          color: "#dfeae7",
+          border: "1px solid #69857b",
+          borderRadius: 4,
+        }}
+      >
+        Enter the crystal world ↗
+      </a>
+    </>
+  );
+}
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
+    <Entry />
   </React.StrictMode>,
 );
