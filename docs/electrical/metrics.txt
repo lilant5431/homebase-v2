@@ -1,0 +1,41 @@
+Convex facet tracing · coherent transmission · 3 internal segments · filtered 1024² probe · analytic spine / 64-step atmosphere · 4× HDR MSAA
+
+Startup / first rendered frame
+1182 ms
+Rendered frame rate
+1.0 FPS
+Frame interval p95 / worst
+1005.0 / 1008.9 ms
+CPU update + render submission
+12.9 ms
+GPU timer (sampled)
+2.3 ms
+Draw calls / triangles incl. passes
+684 / 500,490
+Geometries / textures / programs
+69 / 18 / 39
+Render buffer resolution
+1280 × 720
+Estimated HDR color buffers only
+~230.8 MB
+Rendered frames / world time
+354 / 30.5 s
+Camera position
+9.18, 7.29, 24.91
+Light response
+2 events · Session creation · 0 active
+Motion
+Live
+Constellation
+31 active / 35 sessions · 2 transitions · creation
+
+ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 (0x00002D05) Direct3D11 vs_5_0 ps_5_0, D3D11)
+
+Record world (60s max)
+Freeze world motion
+Test startup failure
+Test context loss
+
+World clip saved. The recording contains the rendered canvas only.
+
+Download latest world clipFPS measures submitted frames, not display scanout. Color-buffer estimate excludes depth, shadows, environment maps and driver overhead. No automatic quality downgrade.

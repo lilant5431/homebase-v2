@@ -1,13 +1,43 @@
 import type { WorldOrb } from "./contract";
-export const CREATION_SECONDS = 4.6;
+export const CREATION_SECONDS = 5.6;
 export const MAX_ENERGY_ROUTES = 4;
+export const MAX_FORMATIONS = 24;
+type CreationBatch = {
+  start: number;
+  last: number;
+  duration: number;
+  grouped: boolean;
+};
 export type OrbEffect = {
   id: string;
   kind: "creation" | "move" | "completion" | "deletion" | "selection";
   time: number;
   from?: WorldOrb;
   to?: WorldOrb;
+  batch?: CreationBatch;
 };
+export function creationAge(effect: OrbEffect, time: number) {
+  return (
+    ((time - (effect.batch?.start ?? effect.time)) * CREATION_SECONDS) /
+    (effect.batch?.duration ?? CREATION_SECONDS)
+  );
+}
+export function routedCreations(effects: readonly OrbEffect[], time: number) {
+  const active = effects.filter(
+    (e) =>
+      e.kind === "creation" &&
+      e.to &&
+      creationAge(e, time) >= 0 &&
+      creationAge(e, time) < CREATION_SECONDS,
+  );
+  const recent = active.slice(-MAX_ENERGY_ROUTES);
+  const batches = new Set(
+    recent.filter((e) => e.batch?.grouped).map((e) => e.batch),
+  );
+  return active
+    .filter((e) => recent.includes(e) || (e.batch && batches.has(e.batch)))
+    .slice(-MAX_FORMATIONS);
+}
 /** Diff committed snapshots only; first load/recovery is a baseline, never a birth. */
 export function createOrbLifecycle(
   initial: readonly WorldOrb[],
@@ -18,6 +48,7 @@ export function createOrbLifecycle(
   let effects: OrbEffect[] = [];
   let count = 0;
   let last = "Existing schedule · no arrival effects";
+  let batch: CreationBatch | undefined;
   return {
     update(
       next: readonly WorldOrb[],
@@ -29,18 +60,36 @@ export function createOrbLifecycle(
       // One latest transition per ID: rapid edits replace rather than queue ghosts.
       effects = quiet
         ? []
-        : effects.filter(
-            (effect) =>
-              time - effect.time <
-              (effect.kind === "creation" ? CREATION_SECONDS : 2.8),
+        : effects.filter((effect) =>
+            effect.kind === "creation"
+              ? creationAge(effect, time) < CREATION_SECONDS
+              : time - effect.time < 2.8,
           );
       const emit = (effect: OrbEffect) => {
+        if (effect.kind === "creation") {
+          // Presentation grouping only. A stable shared clock survives interruption
+          // of another member; joining never queues independent full sequences.
+          if (!batch || time - batch.last > 0.9 || time - batch.start > 2.8) {
+            batch = {
+              start: time,
+              last: time,
+              duration: CREATION_SECONDS,
+              grouped: false,
+            };
+          } else {
+            batch.last = time;
+            batch.grouped = true;
+            batch.duration = CREATION_SECONDS + (time - batch.start) * 0.35;
+          }
+          effect.batch = batch;
+        }
         effects = [...effects.filter((e) => e.id !== effect.id), effect].slice(
           -48,
         );
         count++;
         last = effect.kind;
       };
+      if (quiet) batch = undefined;
       if (!quiet) {
         for (const orb of next) {
           const old = previous.get(orb.id);
@@ -53,10 +102,7 @@ export function createOrbLifecycle(
           else if (
             old &&
             !orb.completed &&
-            (old.angle !== orb.angle ||
-              old.lane !== orb.lane ||
-              old.spread !== orb.spread ||
-              old.radialOffset !== orb.radialOffset)
+            (old.angle !== orb.angle || old.lane !== orb.lane)
           )
             emit({ id: orb.id, kind: "move", time, from: old, to: orb });
         }
@@ -83,12 +129,15 @@ export function createOrbLifecycle(
       effects = effects.filter(
         (e) =>
           time >= e.time &&
-          time - e.time < (e.kind === "creation" ? CREATION_SECONDS : 2.8),
+          (e.kind === "creation"
+            ? creationAge(e, time) < CREATION_SECONDS
+            : time - e.time < 2.8),
       );
       return { effects, count, last };
     },
     clear() {
       effects = [];
+      batch = undefined;
     },
   };
 }

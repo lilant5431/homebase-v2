@@ -1,0 +1,28 @@
+{
+  "saves": [
+    {
+      "hour": 8,
+      "ms": 103
+    },
+    {
+      "hour": 10,
+      "ms": 254
+    },
+    {
+      "hour": 12,
+      "ms": 407
+    },
+    {
+      "hour": 14,
+      "ms": 593
+    },
+    {
+      "hour": 16,
+      "ms": 775
+    }
+  ],
+  "firstToLastMs": 672,
+  "existing": 1,
+  "finalSaved": 6,
+  "finalActiveEffects": 0
+}

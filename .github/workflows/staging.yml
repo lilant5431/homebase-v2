@@ -1,0 +1,45 @@
+name: PR staging preview
+on:
+  push:
+    branches: ["codex/**"]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: pages-staging
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm audit --audit-level=high
+      - run: npm run build -- --base=/${{ github.event.repository.name }}/
+      - name: Identify public staging build
+        env:
+          STAGING_SHA: ${{ github.sha }}
+          STAGING_BRANCH: ${{ github.ref_name }}
+        run: node --input-type=module -e 'import {writeFileSync} from "node:fs"; writeFileSync("dist/staging.json", JSON.stringify({staging:true,sha:process.env.STAGING_SHA,branch:process.env.STAGING_BRANCH}))'
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+  deploy:
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish temporary staging
+        id: deployment
+        uses: actions/deploy-pages@v4

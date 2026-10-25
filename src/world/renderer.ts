@@ -2,6 +2,7 @@ import * as T from "three";
 import { lumenDrive } from "./lumenDrive";
 import { createLightEvents } from "./lightEvents";
 import { createOrbLayer } from "./orbLayer";
+import { poseEnergyGate } from "./energyRoutes";
 import { Reflector } from "three/addons/objects/Reflector.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
@@ -280,17 +281,28 @@ export function createWorld(
       }),
     );
     const halos: T.Group[] = [];
+    const timeGates: T.Group[][] = [];
+    const gateMaterials: T.MeshBasicMaterial[] = [];
     for (let i = 0; i < 3; i++) {
       const halo = new T.Group();
       const radius = 7.1 + i * 0.9;
       const rails = new T.Group();
+      const gates: T.Group[] = [];
+      const gateMaterial = own(
+        new T.MeshBasicMaterial({ color: new T.Color(0.28, 0.55, 0.65) }),
+      );
+      gateMaterials.push(gateMaterial);
+      timeGates.push(gates);
       const arcGeometry = own(
-        new T.TorusGeometry(radius, 0.085, 12, 80, Math.PI / 2 - 0.075),
+        // Continuous conductor through gate centers, including quarter-day births.
+        new T.TorusGeometry(radius, 0.085, 12, 80, Math.PI / 2),
       );
       const channelGeometry = own(
         new T.TorusGeometry(radius + 0.13, 0.028, 10, 80, Math.PI / 2 - 0.12),
       );
-      const collarGeometry = own(new T.BoxGeometry(0.3, 0.5, 0.18));
+      const collarGeometry = own(new T.TorusGeometry(0.24, 0.038, 10, 40));
+      const gateTrimGeometry = own(new T.TorusGeometry(0.3, 0.018, 8, 40));
+      const pinGeometry = own(new T.SphereGeometry(0.045, 8, 6));
       for (let j = 0; j < 4; j++) {
         const segment = new T.Mesh(arcGeometry, platinum);
         segment.rotation.z = (j * Math.PI) / 2 + 0.04;
@@ -299,24 +311,29 @@ export function createWorld(
         channel.rotation.z = (j * Math.PI) / 2 + 0.06;
         rails.add(channel);
         const a = Math.PI / 2 - (j * Math.PI) / 2;
-        const collar = new T.Mesh(collarGeometry, ceramic);
-        collar.position.set(Math.cos(a) * radius, Math.sin(a) * radius, 0);
-        collar.rotation.z = a;
-        rails.add(collar);
-        // Four readable quarter-day gates, with one to four small luminous pins.
+        const gate = new T.Group();
+        gate.position.set(Math.cos(a) * radius, Math.sin(a) * radius, 0);
+        gate.quaternion.setFromUnitVectors(
+          new T.Vector3(0, 0, 1),
+          new T.Vector3(-Math.sin(a), Math.cos(a), 0),
+        );
+        gate.add(
+          new T.Mesh(collarGeometry, gateMaterial),
+          new T.Mesh(gateTrimGeometry, platinum),
+        );
+        // Circular energy gates retain one to four luminous quarter-day markers.
         for (let pin = 0; pin <= j; pin++) {
-          const marker = new T.Mesh(
-            own(new T.BoxGeometry(0.065, 0.12, 0.22)),
-            whiteLight,
-          );
+          const marker = new T.Mesh(pinGeometry, whiteLight);
+          const pinAngle = Math.PI / 2 + (pin - j / 2) * 0.34;
           marker.position.set(
-            Math.cos(a) * (radius + 0.2) + Math.sin(a) * (pin - j / 2) * 0.12,
-            Math.sin(a) * (radius + 0.2) - Math.cos(a) * (pin - j / 2) * 0.12,
-            0.12,
+            Math.cos(pinAngle) * 0.31,
+            Math.sin(pinAngle) * 0.31,
+            0,
           );
-          marker.rotation.z = a;
-          rails.add(marker);
+          gate.add(marker);
         }
+        rails.add(gate);
+        gates.push(gate);
       }
       halo.add(rails);
       halo.position.set(0, 6.1 + i * 0.4, 0);
@@ -373,6 +390,9 @@ export function createWorld(
           uTint: tint,
           uLight: { value: movingLight.position },
           uEmphasis: { value: 0 },
+          uDischarges: {
+            value: Array.from({ length: 4 }, () => new T.Vector4()),
+          },
         },
         side: T.FrontSide,
       }),
@@ -656,14 +676,10 @@ export function createWorld(
             halo.scale.setScalar(0.82);
             halo.position.set(
               0,
-              4.7 + i * 1.1 + Math.sin(drive.phase) * 0.04,
+              4.1 + i * 2.0 + Math.sin(drive.phase) * 0.04,
               0,
             );
-            halo.rotation.set(
-              Math.PI / 2 + [-0.16, 0.08, 0.28][i],
-              0,
-              railPhase * 0.025,
-            );
+            halo.rotation.set(Math.PI / 2 + 0.14, 0, railPhase * 0.025);
           } else if (i === 2) {
             halo.scale.setScalar(0.32);
             halo.position.copy(beamOrigin).addScaledVector(beamAxis, 0.2);
@@ -690,7 +706,45 @@ export function createWorld(
           }
         });
         constellation = orbLayer.render(elapsed, halos, camera);
+        const sourceLocal = new T.Vector3();
+        timeGates.forEach((gates, lane) => {
+          const energy = orbLayer.railEnergies()[lane];
+          gateMaterials[lane].color.setRGB(
+            0.28 + energy.charge * 1.3,
+            0.55 + energy.charge * 1.7,
+            0.65 + energy.charge * 1.9,
+          );
+          sourceLocal.set(0, 6.2, 0);
+          halos[lane].worldToLocal(sourceLocal);
+          gates.forEach((gate, j) =>
+            poseEnergyGate(
+              gate,
+              Math.PI / 2 - (j * Math.PI) / 2,
+              7.1 + lane * 0.9,
+              energy,
+              sourceLocal,
+            ),
+          );
+          halos[lane].updateMatrixWorld(true);
+        });
         const routedEnergy = orbLayer.energy();
+        glass.uniforms.uDischarges.value.forEach(
+          (value: T.Vector4, i: number) => {
+            const branch = orbLayer.internalBranches()[i];
+            const local = new T.Vector3(
+              branch.x,
+              branch.y,
+              branch.z,
+            ).applyMatrix4(glass.uniforms.uInverseWorld.value);
+            const radius = Math.max(0.001, Math.hypot(local.x, local.z));
+            value.set(
+              (local.x / radius) * 1.7,
+              T.MathUtils.clamp(local.y * 0.5, -1.8, 1.8),
+              (local.z / radius) * 1.7,
+              branch.w,
+            );
+          },
+        );
         circuit.uFlash.value = Math.min(
           1.5,
           response.flash + routedEnergy * 0.65,

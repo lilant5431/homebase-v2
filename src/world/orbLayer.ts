@@ -2,15 +2,11 @@ import * as T from "three";
 import type { WorldInput, WorldHooks, WorldOrb } from "./contract";
 import {
   createOrbLifecycle,
-  MAX_ENERGY_ROUTES,
+  creationAge,
+  routedCreations,
   type OrbEffect,
 } from "./orbLifecycle";
-import {
-  createEnergyRoutes,
-  creationPhase,
-  routePoint,
-  routeNode,
-} from "./energyRoutes";
+import { createEnergyRoutes, creationPhase } from "./energyRoutes";
 
 const vertex = `
 attribute vec4 aState;
@@ -121,15 +117,13 @@ export function createOrbLayer(
   >();
   function at(orb: WorldOrb, halos: T.Group[], out: T.Vector3) {
     // Shared 24-hour dial on past-date / today / future-date rings.
-    const radius = 7.1 + orb.lane * 0.9 + (orb.radialOffset || 0);
-    out.set(
-      Math.cos(orb.angle) * radius,
-      Math.sin(orb.angle) * radius,
-      0.2 + orb.spread,
-    );
+    const radius = 7.1 + orb.lane * 0.9;
+    out.set(Math.cos(orb.angle) * radius, Math.sin(orb.angle) * radius, 0);
     return halos[orb.lane].localToWorld(out);
   }
   return {
+    internalBranches: routes.internalBranches,
+    railEnergies: routes.railEnergies,
     energy() {
       return energy;
     },
@@ -182,15 +176,23 @@ export function createOrbLayer(
       for (const [id, anchor] of anchors)
         if (!effects.includes(anchor.effect)) anchors.delete(id);
       const activeBirths = new Set(
-        effects
-          .filter((e) => e.kind === "creation" && !anchors.has(e.id))
-          .slice(-MAX_ENERGY_ROUTES)
-          .map((e) => e.id),
+        routedCreations(
+          effects.filter((e) => !anchors.has(e.id)),
+          time,
+        ).map((e) => e.id),
       );
       energy = routes.render(
         effects.filter((e) => !anchors.has(e.id)),
         time,
         (e, out) => at(e.to!, halos, out),
+        (e, angleOffset, out, radialLift = 0) => {
+          const orb = e.to!,
+            angle = orb.angle + angleOffset,
+            radius = 7.1 + orb.lane * 0.9 + radialLift;
+          return halos[orb.lane].localToWorld(
+            out.set(Math.cos(angle) * radius, Math.sin(angle) * radius, 0),
+          );
+        },
         input.reducedMotion,
       );
       const effectsById = new Map(effects.map((e) => [e.id, e]));
@@ -217,8 +219,7 @@ export function createOrbLayer(
         pos.copy(target);
         let alpha = 1;
         if (birth) {
-          const phase = creationPhase(age);
-          routePoint(Math.max(0.55, phase.t), routeNode(orb.id), target, pos);
+          const phase = creationPhase(creationAge(effect!, time));
           alpha = phase.materialize;
         }
         if (effect?.kind === "move" && effect.from) {
@@ -275,6 +276,8 @@ export function createOrbLayer(
           focus.instanceMatrix.needsUpdate = true;
           focus.instanceColor!.needsUpdate = true;
           focus.visible = true;
+          focusState.setX(0, alpha);
+          focusState.needsUpdate = true;
         }
         states.setXYZW(
           index,
