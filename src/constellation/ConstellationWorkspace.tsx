@@ -252,9 +252,10 @@ export default function ConstellationWorkspace() {
                   history.
                 </p>
                 <p>
-                  On creation: pedestal feeders → Lumen spine → directed rail
-                  pulse → session light. Up to four energy routes run together;
-                  larger batches settle directly into their saved positions.
+                  On creation: pedestal lattice → Lumen spine → lightning →
+                  counterpropagating rail pulses → compression → session light.
+                  Up to four energy routes run together; larger batches settle
+                  directly into their saved positions.
                 </p>
               </details>
               <ul

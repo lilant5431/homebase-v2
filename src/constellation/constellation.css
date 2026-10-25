@@ -92,6 +92,8 @@
   color: #a8cbd7;
 }
 .constellation-nav {
+  margin: 0;
+  width: 100%;
   order: -2;
   flex-shrink: 0;
   flex-direction: row;
@@ -107,6 +109,9 @@
   background: transparent;
   border-color: transparent;
   padding: 8px 15px;
+}
+.constellation-nav button:nth-child(3) {
+  display: inline-flex;
 }
 .constellation-nav button[aria-pressed="true"] {
   background: #b6dfe612;
@@ -339,6 +344,7 @@
 .constellation-detail dd {
   margin: 0;
   text-align: right;
+  overflow-wrap: anywhere;
 }
 .constellation-detail p {
   font-size: 10px;
@@ -614,5 +620,18 @@
     scroll-behavior: auto !important;
     animation: none !important;
     transition: none !important;
+  }
+}
+@media (max-width: 380px) {
+  .constellation-header {
+    height: auto;
+    min-height: 68px;
+    flex-wrap: wrap;
+    padding: 10px 12px;
+  }
+  .constellation-brand {
+    order: -1;
+    width: 100%;
+    justify-content: center;
   }
 }

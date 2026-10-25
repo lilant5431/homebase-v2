@@ -2,12 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as T from "three";
 import { seed, type Block } from "../domain";
 import { scheduleOrbs } from "../constellation/adapter";
-import {
-  creationPhase,
-  routePoint,
-  routeNode,
-  createEnergyRoutes,
-} from "./energyRoutes";
+import { creationPhase, createEnergyRoutes } from "./energyRoutes";
 import { createOrbLayer } from "./orbLayer";
 import { createOrbLifecycle, MAX_ENERGY_ROUTES } from "./orbLifecycle";
 import { createLightEvents } from "./lightEvents";
@@ -133,27 +128,24 @@ describe("causal bounded energy routes", () => {
       layer.dispose();
     }
   });
-  it("traces continuous pedestal/core/rail endpoints before materialization, and fades to zero", () => {
-    const target = new T.Vector3(8, 7, 1),
-      node = routeNode("session");
-    expect(routePoint(0, node, target).length()).toBeCloseTo(
-      Math.hypot(5.5, 0.08),
-    );
-    for (const t of [0.28, 0.55, 0.86])
-      expect(
-        routePoint(t - 1e-8, node, target).distanceTo(
-          routePoint(t + 1e-8, node, target),
-        ),
-      ).toBeLessThan(1e-5);
-    expect(routePoint(0.55, node, target).toArray()).toEqual([0, 6.2, 0]);
-    expect(routePoint(0.86, node, target).distanceTo(target)).toBeLessThan(
-      1e-10,
-    );
-    expect(creationPhase(2).materialize).toBe(0);
-    expect(creationPhase(4.6)).toMatchObject({ materialize: 1, envelope: 0 });
+  it("orders charge, discharge, rail reception and compression before orb materialization", () => {
     expect(creationPhase(0).envelope).toBe(0);
+    const charged = creationPhase(4.6 * 0.43);
+    expect(charged.gather).toBe(1);
+    expect(charged.rise).toBeGreaterThan(0.99);
+    expect(charged.rail).toBe(0);
+    expect(charged.materialize).toBe(0);
+    expect(creationPhase(4.6 * 0.62).travel).toBe(1);
+    expect(creationPhase(4.6 * 0.84)).toMatchObject({
+      rail: 1,
+      compress: 0,
+      materialize: 0,
+    });
+    expect(creationPhase(4.6 * 0.92).compress).toBeGreaterThan(0.89);
+    expect(creationPhase(4.6 * 0.92).materialize).toBeCloseTo(0, 12);
+    expect(creationPhase(4.6)).toMatchObject({ materialize: 1, envelope: 0 });
   });
-  it("limits simultaneous routed bursts, resets tick activation on cancellation and disposes owned geometry", () => {
+  it("bounds rapid discharges, follows transformed rail geometry, fades and disposes resources", () => {
     const scene = new T.Scene(),
       ticks = Array.from({ length: 96 }, () => new T.Mesh());
     const originals = ticks.map((t) => t.material),
@@ -165,13 +157,49 @@ describe("causal bounded energy routes", () => {
       time: 0,
       to: { ...node, id: String(i) },
     }));
-    routes.render(effects, 2, (_, out) => out.set(8, 6, 0), false);
-    const heads = scene.children[0].children.find(
-      (o) => o instanceof T.InstancedMesh,
-    ) as T.InstancedMesh;
-    expect(heads.count).toBe(MAX_ENERGY_ROUTES * 3);
-    routes.render(effects, 2, (_, out) => out.set(8, 6, 0), true);
-    expect(heads.count).toBe(0);
+    const halo = new T.Group();
+    halo.position.set(3, 5, -2);
+    halo.rotation.set(1.3, 0.2, 0.4);
+    halo.scale.setScalar(0.82);
+    halo.updateMatrixWorld(true);
+    const rail = (_: unknown, angle: number, out: T.Vector3) =>
+      halo.localToWorld(out.set(Math.cos(angle) * 8, Math.sin(angle) * 8, 0));
+    const target = (_: unknown, out: T.Vector3) => rail(null, 0, out);
+    const mesh = scene.getObjectByName(
+      "electrical-network",
+    ) as T.Mesh<T.BufferGeometry>;
+    routes.render(effects, 1, target, rail, false);
+    expect(ticks.some((t, i) => t.material !== originals[i])).toBe(true);
+    const count = mesh.geometry.drawRange.count;
+    routes.render(effects.slice(-MAX_ENERGY_ROUTES), 1, target, rail, false);
+    expect(mesh.geometry.drawRange.count).toBe(count);
+    expect(count).toBeLessThanOrEqual(
+      mesh.geometry.getAttribute("position").count,
+    );
+    // Between discharge and compression ONLY ring-bound electricity is drawn.
+    routes.render(effects, 4.6 * 0.76, target, rail, false);
+    const vertices = mesh.geometry.getAttribute("position"),
+      point = new T.Vector3();
+    expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
+    for (let i = 0; i < mesh.geometry.drawRange.count; i++) {
+      point.fromBufferAttribute(vertices, i);
+      halo.worldToLocal(point);
+      expect(Math.abs(point.z)).toBeLessThan(0.055);
+      expect(Math.abs(Math.hypot(point.x, point.y) - 8)).toBeLessThan(0.055);
+    }
+    const strength = mesh.geometry.getAttribute("electrical");
+    routes.render(effects, 4.6 * 0.99, target, rail, false);
+    expect(
+      Math.max(
+        ...Array.from({ length: mesh.geometry.drawRange.count }, (_, i) =>
+          strength.getY(i),
+        ),
+      ),
+    ).toBeLessThan(0.2);
+    routes.render(effects, 4.6, target, rail, false);
+    expect(mesh.geometry.drawRange.count).toBe(0);
+    routes.render(effects, 1, target, rail, true);
+    expect(mesh.geometry.drawRange.count).toBe(0);
     expect(ticks.map((t) => t.material)).toEqual(originals);
     routes.dispose();
     expect(scene.children).toHaveLength(0);
@@ -239,6 +267,55 @@ describe("causal bounded energy routes", () => {
       expect(html.x).toBeCloseTo((projected.x + 1) * 50, 4);
       expect(html.y).toBeCloseTo((1 - projected.y) * 50, 4);
     }
+    layer.dispose();
+    expect(scene.children).toHaveLength(0);
+  });
+  it("keeps selected birth opacity synchronized and settles quietly without replay under reduced motion", () => {
+    const scene = new T.Scene(),
+      orb = scheduleOrbs(seed(), "2099-01-01T00:00")[0];
+    const input: WorldInput = {
+      area: "week",
+      emphasis: false,
+      reducedMotion: false,
+      orbs: [],
+    };
+    const layer = createOrbLayer(
+      scene,
+      input,
+      {
+        metrics() {},
+        error(e) {
+          throw e;
+        },
+      },
+      () => {},
+    );
+    const halos = Array.from({ length: 3 }, () => new T.Group());
+    const camera = new T.PerspectiveCamera(43, 1.6, 0.2, 140);
+    camera.position.set(0, 7, 26);
+    camera.lookAt(0, 6, 0);
+    const next = { ...input, orbs: [orb], selectedOrb: orb.id };
+    layer.update(next, 0);
+    layer.render(1, halos, camera);
+    const focus = scene.getObjectByName("session-focus") as T.InstancedMesh;
+    const aura = scene.getObjectByName("session-coronas") as T.InstancedMesh;
+    const opacity = (mesh: T.InstancedMesh) =>
+      mesh.geometry.getAttribute("aState").getX(0);
+    expect(opacity(focus)).toBe(0);
+    expect(opacity(aura)).toBe(0);
+    layer.render(4.5, halos, camera);
+    expect(opacity(focus)).toBeCloseTo(opacity(aura), 8);
+    expect(opacity(focus)).toBeGreaterThan(0.5);
+    layer.update({ ...next, reducedMotion: true }, 4.51);
+    layer.render(4.51, halos, camera);
+    const network = scene.getObjectByName(
+      "electrical-network",
+    ) as T.Mesh<T.BufferGeometry>;
+    expect(network.geometry.drawRange.count).toBe(0);
+    expect(opacity(focus)).toBe(1);
+    layer.update(next, 4.52);
+    layer.render(4.52, halos, camera);
+    expect(network.geometry.drawRange.count).toBe(0);
     layer.dispose();
     expect(scene.children).toHaveLength(0);
   });

@@ -5,12 +5,7 @@ import {
   MAX_ENERGY_ROUTES,
   type OrbEffect,
 } from "./orbLifecycle";
-import {
-  createEnergyRoutes,
-  creationPhase,
-  routePoint,
-  routeNode,
-} from "./energyRoutes";
+import { createEnergyRoutes, creationPhase } from "./energyRoutes";
 
 const vertex = `
 attribute vec4 aState;
@@ -191,6 +186,17 @@ export function createOrbLayer(
         effects.filter((e) => !anchors.has(e.id)),
         time,
         (e, out) => at(e.to!, halos, out),
+        (e, angleOffset, out) =>
+          at(
+            {
+              ...e.to!,
+              angle: e.to!.angle + angleOffset,
+              spread: -0.2,
+              radialOffset: 0,
+            },
+            halos,
+            out,
+          ),
         input.reducedMotion,
       );
       const effectsById = new Map(effects.map((e) => [e.id, e]));
@@ -218,7 +224,6 @@ export function createOrbLayer(
         let alpha = 1;
         if (birth) {
           const phase = creationPhase(age);
-          routePoint(Math.max(0.55, phase.t), routeNode(orb.id), target, pos);
           alpha = phase.materialize;
         }
         if (effect?.kind === "move" && effect.from) {
@@ -275,6 +280,8 @@ export function createOrbLayer(
           focus.instanceMatrix.needsUpdate = true;
           focus.instanceColor!.needsUpdate = true;
           focus.visible = true;
+          focusState.setX(0, alpha);
+          focusState.needsUpdate = true;
         }
         states.setXYZW(
           index,
