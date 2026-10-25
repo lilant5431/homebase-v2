@@ -284,7 +284,7 @@ export function createEnergyRoutes(scene: T.Scene, ticks: T.Mesh[]) {
                 Math.cos(t * Math.PI * 2) * radius,
               ),
             platformCharge * (radius > 5 ? 0.7 : 0.32),
-            0.18,
+            0.115,
             0,
             0.018,
             192,
@@ -305,54 +305,12 @@ export function createEnergyRoutes(scene: T.Scene, ticks: T.Mesh[]) {
       }
       arc(
         line(base, core),
-        coreCharge * 1.1,
-        0.25,
+        coreCharge * 0.85,
+        0.11,
         Math.floor(time * 14),
-        0.18,
+        0.075,
       );
-      // Shared branching pedestal lattice and dense intake bundle.
-      for (let spoke = 0; spoke < 8; spoke++) {
-        const angle = (spoke * Math.PI) / 4,
-          seed = spoke + Math.floor(time * 12);
-        start.set(Math.sin(angle) * 5.5, 0.08, Math.cos(angle) * 5.5);
-        const elbow = new T.Vector3(
-          Math.sin(angle + 0.18) * 2.3,
-          0.28,
-          Math.cos(angle + 0.18) * 2.3,
-        );
-        arc(line(start, elbow), platformCharge * 0.85, 0.16, seed, 0.28, 24);
-        arc(line(elbow, base), platformCharge, 0.2, seed + 2, 0.22, 20);
-        const fork = new T.Vector3(
-          Math.sin(angle - 0.2) * 3.5,
-          0.12,
-          Math.cos(angle - 0.2) * 3.5,
-        );
-        arc(
-          line(fork, elbow),
-          platformCharge * (0.35 + 0.25 * Math.sin(time * 17 + spoke) ** 2),
-          0.1,
-          seed + 5,
-          0.22,
-          14,
-        );
-      }
-      for (let strand = 0; strand < 5; strand++)
-        arc(
-          (t, out) => {
-            const radius = (1 - t) * 0.85 + 0.05,
-              angle = strand * Math.PI * 0.4 + t * 1.3;
-            return out.set(
-              Math.cos(angle) * radius,
-              0.2 + t * 2.5,
-              Math.sin(angle) * radius,
-            );
-          },
-          coreCharge * 0.85,
-          0.15,
-          Math.floor(time * 14) + strand,
-          0.1,
-          22,
-        );
+      // Pedestal feeder treatment restored from b40e16a; cohort timing stays current.
       for (const [routeIndex, effect] of systems.entries()) {
         const phase = creationPhase(creationAge(effect, time)),
           node = routeNode(effect.id);
@@ -390,6 +348,28 @@ export function createEnergyRoutes(scene: T.Scene, ticks: T.Mesh[]) {
           const n = (node + branch * 32) % 96,
             angle = (n / 96) * Math.PI * 2;
           start.set(Math.sin(angle) * 5.5, 0.08, Math.cos(angle) * 5.5);
+          const inward = phase.gather;
+          arc(
+            (t, out) => out.lerpVectors(start, base, t * inward),
+            charge * (0.5 + strike * 0.5),
+            0.085,
+            seed + branch,
+            0.14,
+          );
+          // Outer bus ties adjacent instruments together before feeding the core.
+          arc(
+            (t, out) =>
+              out.set(
+                Math.sin(angle + (t * Math.PI) / 6) * 5.5,
+                0.08,
+                Math.cos(angle + (t * Math.PI) / 6) * 5.5,
+              ),
+            charge * 0.65,
+            0.055,
+            seed,
+            0.035,
+            16,
+          );
           const tick = ticks[n];
           if (tick && charge > 0.01) {
             tick.material = activeMaterial;

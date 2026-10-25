@@ -134,10 +134,19 @@ export default function ConstellationWorkspace() {
         onSelectOrb={select}
       />
       <header className="constellation-header">
-        <a href="#" className="constellation-back">
-          <ArrowLeft size={14} /> Back to planner
-        </a>
-        <a className="constellation-brand" href="#crystal">
+        <nav className="constellation-global" aria-label="Main navigation">
+          <a href="#calendar" className="constellation-back">
+            <ArrowLeft size={14} />
+            Calendar
+          </a>
+          <a href="#assistant">Assistant</a>
+        </nav>
+        <a
+          className="constellation-brand"
+          href="#crystal"
+          aria-current="page"
+          aria-label="Crystal · Lumimark"
+        >
           <Gem size={22} />
           lumimark <span>LIVING SCHEDULE</span>
         </a>

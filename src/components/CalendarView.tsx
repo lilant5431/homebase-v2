@@ -54,12 +54,20 @@ export function CalendarView({
   setWeek,
   open,
 }: Props) {
+  const courses = [
+    ...new Map(
+      state.assignments.map((a) => [
+        a.course,
+        { course: a.course, color: a.color },
+      ]),
+    ).values(),
+  ];
   return (
     <>
       <div className="calendar-toolbar">
         <div>
           <h2>{weekLabel}</h2>
-          <small>Every commitment, a little more considered.</small>
+          <small>Select a time to schedule.</small>
         </div>
         <div className="date-nav">
           <button
@@ -85,6 +93,7 @@ export function CalendarView({
           </button>
         </div>
       </div>
+      <p className="calendar-pan-hint">Swipe across for all seven days →</p>
       <div
         className="calendar-scroll"
         ref={(el) => {
@@ -183,22 +192,13 @@ export function CalendarView({
         </div>
       </div>
       <div className="calendar-footer">
-        <span>
-          <i className="legend lilac" />
-          Psychology
-        </span>
-        <span>
-          <i className="legend mint" />
-          Mathematics
-        </span>
-        <span>
-          <i className="legend peach" />
-          Literature
-        </span>
-        <span>
-          <i className="legend blue" />
-          Biology
-        </span>
+        {courses.slice(0, 6).map((a) => (
+          <span key={a.course}>
+            <i className={`legend ${a.color}`} />
+            {a.course}
+          </span>
+        ))}
+        <span>Local time · 24-hour calendar</span>
       </div>
     </>
   );

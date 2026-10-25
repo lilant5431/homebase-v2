@@ -1,6 +1,8 @@
 # Lumimark V2
 
-A local academic planner with a living Lumen schedule constellation. Open `/#crystal` to inspect and manage **your saved study sessions** as orbital lights. **Back to planner** opens the conventional calendar. The previous disposable visual workspace remains at `/#demo`. See [V2.3A energy and temporal verification](docs/energy/README.md) and [V2.2 evidence](docs/constellation/README.md). Repository paths and storage identifiers are unchanged; schema v2 data imports migrate to v3.
+A local academic planner with a living Lumen schedule constellation. Open `/#crystal` to inspect and manage **your saved study sessions** as orbital lights. **Calendar** returns to the Luminous Workspace. The previous disposable visual workspace remains at `/#demo`. See [V2.3A energy and temporal verification](docs/energy/README.md) and [V2.2 evidence](docs/constellation/README.md). Repository paths and storage identifiers are unchanged; schema v2 data imports migrate to v3.
+
+V2.3B opens the [Luminous Workspace](docs/luminous-workspace/README.md): Calendar, Crystal and Assistant share one identity. Quick Add captures assignments or scheduled time; Workspace tools retain backup/restore, undo and recovery. Ordinary pages use a lightweight CSS atmosphere, with pause and reduced-motion support. The crystal renderer is reserved for `/#crystal`.
 
 A responsive academic planner prototype built with React, TypeScript, and Vite. Homebase V1 is separate and has not been modified.
 
