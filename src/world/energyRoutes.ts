@@ -16,6 +16,25 @@ export function creationPhase(age: number) {
     envelope: smooth(t, 0, 0.035) * (1 - smooth(t, 0.94, 1)),
   };
 }
+/** Both fronts start at the discharge contact and arrive at the session angle.
+ * The return front wraps the remainder of the rail rather than a generic half-ring. */
+export function railFronts(progress: number) {
+  const contact = 0.9;
+  return [
+    {
+      tip: T.MathUtils.lerp(contact, 0, progress),
+      tail: T.MathUtils.lerp(contact, 0, Math.max(0, progress - 0.16)),
+    },
+    {
+      tip: T.MathUtils.lerp(contact, Math.PI * 2, progress),
+      tail: T.MathUtils.lerp(
+        contact,
+        Math.PI * 2,
+        Math.max(0, progress - 0.16),
+      ),
+    },
+  ];
+}
 export function routeNode(id: string) {
   let hash = 0;
   for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
@@ -80,6 +99,7 @@ export function createEnergyRoutes(scene: T.Scene, ticks: T.Mesh[]) {
   const activeMaterial = new T.MeshBasicMaterial({
     color: new T.Color(1.2, 2.2, 2.7),
   });
+  const busMaterial = new T.MeshBasicMaterial();
   const originals = ticks.map((tick) => tick.material);
   const a = new T.Vector3(),
     b = new T.Vector3(),
@@ -163,6 +183,54 @@ export function createEnergyRoutes(scene: T.Scene, ticks: T.Mesh[]) {
                 time - e.time < CREATION_SECONDS,
             )
             .slice(-MAX_ENERGY_ROUTES);
+      const chargeOf = (t: number) =>
+        smooth(t, 0, 0.035) * (1 - smooth(t, 0.43, 0.64));
+      const platformCharge = Math.max(
+        0,
+        ...routes.map((e) => chargeOf(creationPhase(time - e.time).t)),
+      );
+      const coreCharge = Math.max(
+        0,
+        ...routes.map((e) => {
+          const phase = creationPhase(time - e.time);
+          return chargeOf(phase.t) * phase.rise;
+        }),
+      );
+      const budget = 1 / Math.sqrt(Math.max(1, routes.length));
+      // One shared bus and spine, regardless of how many births are in flight.
+      // Every instrument participates; selected feeder nodes remain brighter.
+      if (platformCharge > 0.001) {
+        busMaterial.color.setRGB(
+          0.35 * platformCharge,
+          1.05 * platformCharge,
+          1.4 * platformCharge,
+        );
+        ticks.forEach((tick) => {
+          tick.material = busMaterial;
+          tick.scale.setScalar(1 + platformCharge * 0.25);
+        });
+        for (const radius of [4.9, 5.5])
+          arc(
+            (t, out) =>
+              out.set(
+                Math.sin(t * Math.PI * 2) * radius,
+                0.08,
+                Math.cos(t * Math.PI * 2) * radius,
+              ),
+            platformCharge * (radius > 5 ? 0.7 : 0.32),
+            0.115,
+            0,
+            0.018,
+            192,
+          );
+      }
+      arc(
+        line(base, core),
+        coreCharge * 0.85,
+        0.11,
+        Math.floor(time * 14),
+        0.075,
+      );
       for (const effect of routes) {
         const phase = creationPhase(time - effect.time),
           node = routeNode(effect.id);
@@ -172,16 +240,20 @@ export function createEnergyRoutes(scene: T.Scene, ticks: T.Mesh[]) {
           0.24 +
           0.76 *
             Math.pow(0.5 + 0.5 * Math.sin((time - effect.time) * 25 + node), 6);
-        const charge = phase.envelope * (1 - smooth(phase.t, 0.43, 0.64));
+        const charge = chargeOf(phase.t) * budget;
         const discharge =
-          smooth(phase.t, 0.42, 0.47) * (1 - smooth(phase.t, 0.63, 0.7));
+          smooth(phase.t, 0.42, 0.47) *
+          (1 - smooth(phase.t, 0.63, 0.7)) *
+          budget;
         const reception =
-          smooth(phase.t, 0.6, 0.65) * (1 - smooth(phase.t, 0.91, 0.98));
+          smooth(phase.t, 0.6, 0.65) *
+          (1 - smooth(phase.t, 0.91, 0.98)) *
+          budget;
         power = Math.min(1, power + phase.envelope * (0.2 + phase.rise * 0.55));
         destination(effect, end);
-        rail(effect, Math.PI, contact);
+        rail(effect, 0.9, contact);
         for (let branch = 0; branch < 3; branch++) {
-          const n = (node + branch * 8) % 96,
+          const n = (node + branch * 32) % 96,
             angle = (n / 96) * Math.PI * 2;
           start.set(Math.sin(angle) * 5.5, 0.08, Math.cos(angle) * 5.5);
           arc(line(start, base), charge * strike, 0.065, seed + branch, 0.14);
@@ -205,14 +277,7 @@ export function createEnergyRoutes(scene: T.Scene, ticks: T.Mesh[]) {
             tick.scale.setScalar(1 + charge * 1.3);
           }
         }
-        arc(
-          line(base, core),
-          charge * phase.rise * (0.45 + strike * 0.55),
-          0.09,
-          seed,
-          0.075,
-        );
-        // Directed branched discharge reaches the opposite side of the target rail.
+        // Directed discharge reaches the intended sector, then charges its rail.
         arc(
           line(core, contact),
           discharge * (0.6 + strike * 0.4),
@@ -234,36 +299,59 @@ export function createEnergyRoutes(scene: T.Scene, ticks: T.Mesh[]) {
           32,
         );
         // Counterpropagating pulses follow the live ring, including world motion.
-        for (const sign of [-1, 1]) {
-          const tip = Math.PI * (1 - phase.rail);
+        for (const [index, front] of railFronts(phase.rail).entries()) {
           arc(
             (t, out) =>
-              rail(
-                effect,
-                sign * T.MathUtils.lerp(Math.min(Math.PI, tip + 0.75), tip, t),
-                out,
-              ),
+              rail(effect, T.MathUtils.lerp(front.tail, front.tip, t), out),
             reception,
-            0.13,
-            seed + sign,
+            0.22,
+            seed + index,
             0.025,
             32,
           );
           arc(
-            (t, out) =>
-              rail(effect, sign * T.MathUtils.lerp(Math.PI, tip, t), out),
-            reception * 0.15,
-            0.06,
+            (t, out) => rail(effect, T.MathUtils.lerp(0.9, front.tip, t), out),
+            reception * 0.24,
+            0.11,
             node,
             0,
             48,
           );
         }
+        // A contracting sector highlights the EXACT saved time before the orb
+        // appears. It stays on the conductor, including tilted/moving rails.
+        const sector = T.MathUtils.lerp(0.34, 0.035, phase.compress);
+        arc(
+          (t, out) => rail(effect, (t * 2 - 1) * sector, out),
+          reception * (0.55 + phase.rail * 0.45),
+          0.22,
+          node,
+          0.012,
+          40,
+        );
         const compression =
-          smooth(phase.t, 0.82, 0.87) * (1 - smooth(phase.t, 0.95, 1));
+          smooth(phase.t, 0.82, 0.87) * (1 - smooth(phase.t, 0.95, 1)) * budget;
         // Bridge the small depth offset to a concentrated six-spoke knot.
         rail(effect, 0, contact);
         arc(line(contact, end), compression, 0.1, seed, 0.05, 12);
+        const knotRadius = 0.65 * (1 - phase.compress) + 0.035;
+        arc(
+          (t, out) =>
+            out
+              .copy(end)
+              .add(
+                new T.Vector3(
+                  Math.cos(t * Math.PI * 2) * knotRadius,
+                  Math.sin(t * Math.PI * 2) * knotRadius,
+                  0,
+                ),
+              ),
+          compression * 0.65,
+          0.065,
+          seed,
+          0.015,
+          40,
+        );
         for (let spoke = 0; spoke < 6; spoke++) {
           const angle = (spoke / 6) * Math.PI * 2,
             radius = 0.8 * (1 - phase.compress) + 0.035;
@@ -300,6 +388,7 @@ export function createEnergyRoutes(scene: T.Scene, ticks: T.Mesh[]) {
       geometry.dispose();
       material.dispose();
       activeMaterial.dispose();
+      busMaterial.dispose();
     },
   };
 }

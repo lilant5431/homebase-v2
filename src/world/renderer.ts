@@ -290,7 +290,9 @@ export function createWorld(
       const channelGeometry = own(
         new T.TorusGeometry(radius + 0.13, 0.028, 10, 80, Math.PI / 2 - 0.12),
       );
-      const collarGeometry = own(new T.BoxGeometry(0.3, 0.5, 0.18));
+      const collarGeometry = own(new T.TorusGeometry(0.24, 0.038, 10, 40));
+      const gateTrimGeometry = own(new T.TorusGeometry(0.3, 0.018, 8, 40));
+      const pinGeometry = own(new T.SphereGeometry(0.045, 8, 6));
       for (let j = 0; j < 4; j++) {
         const segment = new T.Mesh(arcGeometry, platinum);
         segment.rotation.z = (j * Math.PI) / 2 + 0.04;
@@ -299,24 +301,28 @@ export function createWorld(
         channel.rotation.z = (j * Math.PI) / 2 + 0.06;
         rails.add(channel);
         const a = Math.PI / 2 - (j * Math.PI) / 2;
-        const collar = new T.Mesh(collarGeometry, ceramic);
-        collar.position.set(Math.cos(a) * radius, Math.sin(a) * radius, 0);
-        collar.rotation.z = a;
-        rails.add(collar);
-        // Four readable quarter-day gates, with one to four small luminous pins.
+        const gate = new T.Group();
+        gate.position.set(Math.cos(a) * radius, Math.sin(a) * radius, 0);
+        gate.quaternion.setFromUnitVectors(
+          new T.Vector3(0, 0, 1),
+          new T.Vector3(-Math.sin(a), Math.cos(a), 0),
+        );
+        gate.add(
+          new T.Mesh(collarGeometry, resonance),
+          new T.Mesh(gateTrimGeometry, platinum),
+        );
+        // Circular energy gates retain one to four luminous quarter-day markers.
         for (let pin = 0; pin <= j; pin++) {
-          const marker = new T.Mesh(
-            own(new T.BoxGeometry(0.065, 0.12, 0.22)),
-            whiteLight,
-          );
+          const marker = new T.Mesh(pinGeometry, whiteLight);
+          const pinAngle = Math.PI / 2 + (pin - j / 2) * 0.34;
           marker.position.set(
-            Math.cos(a) * (radius + 0.2) + Math.sin(a) * (pin - j / 2) * 0.12,
-            Math.sin(a) * (radius + 0.2) - Math.cos(a) * (pin - j / 2) * 0.12,
-            0.12,
+            Math.cos(pinAngle) * 0.31,
+            Math.sin(pinAngle) * 0.31,
+            0,
           );
-          marker.rotation.z = a;
-          rails.add(marker);
+          gate.add(marker);
         }
+        rails.add(gate);
       }
       halo.add(rails);
       halo.position.set(0, 6.1 + i * 0.4, 0);
@@ -656,14 +662,10 @@ export function createWorld(
             halo.scale.setScalar(0.82);
             halo.position.set(
               0,
-              4.7 + i * 1.1 + Math.sin(drive.phase) * 0.04,
+              4.1 + i * 2.0 + Math.sin(drive.phase) * 0.04,
               0,
             );
-            halo.rotation.set(
-              Math.PI / 2 + [-0.16, 0.08, 0.28][i],
-              0,
-              railPhase * 0.025,
-            );
+            halo.rotation.set(Math.PI / 2 + 0.14, 0, railPhase * 0.025);
           } else if (i === 2) {
             halo.scale.setScalar(0.32);
             halo.position.copy(beamOrigin).addScaledVector(beamAxis, 0.2);

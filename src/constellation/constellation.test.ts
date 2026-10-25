@@ -17,7 +17,7 @@ import {
 import { WorkspaceStore } from "../storage";
 import { createBackupBlob, readBackupFile } from "../backup";
 import { scheduleOrbs } from "./adapter";
-import { createOrbLifecycle } from "../world/orbLifecycle";
+import { CREATION_SECONDS, createOrbLifecycle } from "../world/orbLifecycle";
 import { projectOrbs } from "../world/orbLayer";
 import { PerspectiveCamera, Vector3 } from "three";
 
@@ -292,7 +292,7 @@ describe("interruptible committed-snapshot lifecycle", () => {
     expect(life.sample(1.3).effects).toMatchObject([{ kind: "deletion" }]);
     life.update([node], null, 1.4, false);
     expect(life.sample(1.4).effects).toHaveLength(1);
-    expect(life.sample(7).effects).toEqual([]);
+    expect(life.sample(1.4 + CREATION_SECONDS + 0.01).effects).toEqual([]);
   });
   it("moves the same ID, avoids initial/quiet effects and never replays effects after recovery", () => {
     const life = createOrbLifecycle([node]);

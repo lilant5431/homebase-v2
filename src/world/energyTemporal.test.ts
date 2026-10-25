@@ -2,9 +2,13 @@ import { describe, it, expect } from "vitest";
 import * as T from "three";
 import { seed, type Block } from "../domain";
 import { scheduleOrbs } from "../constellation/adapter";
-import { creationPhase, createEnergyRoutes } from "./energyRoutes";
+import { creationPhase, createEnergyRoutes, railFronts } from "./energyRoutes";
 import { createOrbLayer } from "./orbLayer";
-import { createOrbLifecycle, MAX_ENERGY_ROUTES } from "./orbLifecycle";
+import {
+  createOrbLifecycle,
+  MAX_ENERGY_ROUTES,
+  CREATION_SECONDS,
+} from "./orbLifecycle";
 import { createLightEvents } from "./lightEvents";
 import type { WorldInput, OrbProjection } from "./contract";
 
@@ -130,20 +134,87 @@ describe("causal bounded energy routes", () => {
   });
   it("orders charge, discharge, rail reception and compression before orb materialization", () => {
     expect(creationPhase(0).envelope).toBe(0);
-    const charged = creationPhase(4.6 * 0.43);
+    const charged = creationPhase(CREATION_SECONDS * 0.43);
     expect(charged.gather).toBe(1);
     expect(charged.rise).toBeGreaterThan(0.99);
     expect(charged.rail).toBe(0);
     expect(charged.materialize).toBe(0);
-    expect(creationPhase(4.6 * 0.62).travel).toBe(1);
-    expect(creationPhase(4.6 * 0.84)).toMatchObject({
+    expect(creationPhase(CREATION_SECONDS * 0.62).travel).toBe(1);
+    expect(creationPhase(CREATION_SECONDS * 0.84)).toMatchObject({
       rail: 1,
       compress: 0,
       materialize: 0,
     });
-    expect(creationPhase(4.6 * 0.92).compress).toBeGreaterThan(0.89);
-    expect(creationPhase(4.6 * 0.92).materialize).toBeCloseTo(0, 12);
-    expect(creationPhase(4.6)).toMatchObject({ materialize: 1, envelope: 0 });
+    expect(creationPhase(CREATION_SECONDS * 0.92).compress).toBeGreaterThan(
+      0.89,
+    );
+    expect(creationPhase(CREATION_SECONDS * 0.92).materialize).toBeCloseTo(
+      0,
+      12,
+    );
+    expect(creationPhase(CREATION_SECONDS)).toMatchObject({
+      materialize: 1,
+      envelope: 0,
+    });
+  });
+  it("wraps the entire platform and both rail fronts converge at the saved sector", () => {
+    expect(CREATION_SECONDS).toBeGreaterThan(5.5);
+    expect(CREATION_SECONDS).toBeLessThan(7);
+    const start = railFronts(0),
+      finish = railFronts(1);
+    expect(start.map((p) => p.tip)).toEqual([0.9, 0.9]);
+    expect(finish[0].tip).toBe(0);
+    expect(finish[1].tip).toBeCloseTo(Math.PI * 2, 12);
+    // Circular equivalence puts both arrivals at the SAME saved clock angle.
+    for (const lane of [0, 1, 2])
+      for (const angle of [-3.1, 0, 2.4]) {
+        const halo = new T.Group();
+        halo.position.y = 4.1 + lane * 2;
+        halo.rotation.set(1.71, 0, 0.7);
+        halo.scale.setScalar(0.82);
+        halo.updateMatrixWorld(true);
+        const at = (offset: number) =>
+          halo.localToWorld(
+            new T.Vector3(
+              Math.cos(angle + offset) * 8,
+              Math.sin(angle + offset) * 8,
+              0,
+            ),
+          );
+        for (const front of finish)
+          expect(at(front.tip).distanceTo(at(0))).toBeLessThan(1e-10);
+      }
+    const scene = new T.Scene(),
+      ticks = Array.from({ length: 96 }, () => new T.Mesh());
+    const originals = ticks.map((t) => t.material),
+      routes = createEnergyRoutes(scene, ticks);
+    const orb = scheduleOrbs(seed(), "2099-01-01T00:00")[0];
+    const effect = { id: orb.id, kind: "creation" as const, time: 0, to: orb };
+    const rail = (_: unknown, a: number, out: T.Vector3) =>
+      out.set(Math.cos(a) * 8, 6, Math.sin(a) * 8);
+    routes.render([effect], 1.2, (_, out) => rail(null, 0, out), rail, false);
+    expect(ticks.filter((t, i) => t.material !== originals[i])).toHaveLength(
+      96,
+    );
+    // Full bus reaches all four quadrants, not only the selected feeder nodes.
+    const mesh = scene.getObjectByName(
+      "electrical-network",
+    ) as T.Mesh<T.BufferGeometry>;
+    const position = mesh.geometry.getAttribute("position"),
+      quadrants = new Set();
+    for (let i = 0; i < mesh.geometry.drawRange.count; i++)
+      if (Math.hypot(position.getX(i), position.getZ(i)) > 5.4)
+        quadrants.add(
+          `${Math.sign(position.getX(i))}:${Math.sign(position.getZ(i))}`,
+        );
+    expect(
+      quadrants.has("1:1") &&
+        quadrants.has("1:-1") &&
+        quadrants.has("-1:1") &&
+        quadrants.has("-1:-1"),
+    ).toBe(true);
+    routes.dispose();
+    expect(ticks.map((t) => t.material)).toEqual(originals);
   });
   it("bounds rapid discharges, follows transformed rail geometry, fades and disposes resources", () => {
     const scene = new T.Scene(),
@@ -177,7 +248,7 @@ describe("causal bounded energy routes", () => {
       mesh.geometry.getAttribute("position").count,
     );
     // Between discharge and compression ONLY ring-bound electricity is drawn.
-    routes.render(effects, 4.6 * 0.76, target, rail, false);
+    routes.render(effects, CREATION_SECONDS * 0.76, target, rail, false);
     const vertices = mesh.geometry.getAttribute("position"),
       point = new T.Vector3();
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
@@ -188,7 +259,7 @@ describe("causal bounded energy routes", () => {
       expect(Math.abs(Math.hypot(point.x, point.y) - 8)).toBeLessThan(0.055);
     }
     const strength = mesh.geometry.getAttribute("electrical");
-    routes.render(effects, 4.6 * 0.99, target, rail, false);
+    routes.render(effects, CREATION_SECONDS * 0.99, target, rail, false);
     expect(
       Math.max(
         ...Array.from({ length: mesh.geometry.drawRange.count }, (_, i) =>
@@ -196,12 +267,78 @@ describe("causal bounded energy routes", () => {
         ),
       ),
     ).toBeLessThan(0.2);
-    routes.render(effects, 4.6, target, rail, false);
+    routes.render(effects, CREATION_SECONDS, target, rail, false);
     expect(mesh.geometry.drawRange.count).toBe(0);
     routes.render(effects, 1, target, rail, true);
     expect(mesh.geometry.drawRange.count).toBe(0);
     expect(ticks.map((t) => t.material)).toEqual(originals);
     routes.dispose();
+    expect(scene.children).toHaveLength(0);
+  });
+  it("settles rapid consecutive saves with bounded geometry and no duplicated or lingering presentation", () => {
+    const scene = new T.Scene(),
+      prototype = scheduleOrbs(seed(), "2099-01-01T00:00")[0];
+    const input: WorldInput = {
+      area: "week",
+      emphasis: false,
+      reducedMotion: false,
+      orbs: [],
+    };
+    const layer = createOrbLayer(
+      scene,
+      input,
+      {
+        metrics() {},
+        error(e) {
+          throw e;
+        },
+      },
+      () => {},
+    );
+    const halos = Array.from({ length: 3 }, (_, i) => {
+      const h = new T.Group();
+      h.rotation.x = 1.71;
+      h.position.y = 4.1 + i * 2;
+      return h;
+    });
+    const camera = new T.PerspectiveCamera(43, 1.6, 0.2, 140);
+    camera.position.set(0, 7, 26);
+    camera.lookAt(0, 6, 0);
+    const orbs = Array.from({ length: 20 }, (_, i) =>
+      Object.freeze({ ...prototype, id: `burst-${i}`, angle: i * 0.24 }),
+    );
+    const before = JSON.stringify(orbs);
+    const network = scene.getObjectByName(
+      "electrical-network",
+    ) as T.Mesh<T.BufferGeometry>;
+    const geometry = network.geometry;
+    for (let i = 0; i < orbs.length; i++) {
+      const t = i * 0.1;
+      layer.update({ ...input, orbs: orbs.slice(0, i + 1) }, t);
+      layer.render(t + 0.03, halos, camera);
+      expect(network.geometry).toBe(geometry);
+      expect(geometry.drawRange.count).toBeLessThanOrEqual(
+        geometry.getAttribute("position").count,
+      );
+      const positions = geometry.getAttribute("position");
+      for (let v = 0; v < geometry.drawRange.count; v += 6)
+        expect(
+          [positions.getX(v), positions.getY(v), positions.getZ(v)].every(
+            Number.isFinite,
+          ),
+        ).toBe(true);
+    }
+    layer.render(2 + CREATION_SECONDS, halos, camera);
+    expect(geometry.drawRange.count).toBe(0);
+    expect(layer.energy()).toBe(0);
+    const aura = scene.getObjectByName("session-coronas") as T.InstancedMesh;
+    expect(aura.count).toBe(20);
+    expect(
+      new Set(orbs.map((o) => layer.positionOf(o.id)!.toArray().join(":")))
+        .size,
+    ).toBe(20);
+    expect(JSON.stringify(orbs)).toBe(before);
+    layer.dispose();
     expect(scene.children).toHaveLength(0);
   });
   it("keeps the GPU focus and HTML projection on the authoritative transform every frame, including moves and rapid selection", () => {
@@ -303,18 +440,18 @@ describe("causal bounded energy routes", () => {
       mesh.geometry.getAttribute("aState").getX(0);
     expect(opacity(focus)).toBe(0);
     expect(opacity(aura)).toBe(0);
-    layer.render(4.5, halos, camera);
+    layer.render(CREATION_SECONDS * 0.98, halos, camera);
     expect(opacity(focus)).toBeCloseTo(opacity(aura), 8);
     expect(opacity(focus)).toBeGreaterThan(0.5);
-    layer.update({ ...next, reducedMotion: true }, 4.51);
-    layer.render(4.51, halos, camera);
+    layer.update({ ...next, reducedMotion: true }, CREATION_SECONDS * 0.99);
+    layer.render(CREATION_SECONDS * 0.99, halos, camera);
     const network = scene.getObjectByName(
       "electrical-network",
     ) as T.Mesh<T.BufferGeometry>;
     expect(network.geometry.drawRange.count).toBe(0);
     expect(opacity(focus)).toBe(1);
-    layer.update(next, 4.52);
-    layer.render(4.52, halos, camera);
+    layer.update(next, CREATION_SECONDS * 0.995);
+    layer.render(CREATION_SECONDS * 0.995, halos, camera);
     expect(network.geometry.drawRange.count).toBe(0);
     layer.dispose();
     expect(scene.children).toHaveLength(0);

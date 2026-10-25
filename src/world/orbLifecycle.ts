@@ -1,5 +1,5 @@
 import type { WorldOrb } from "./contract";
-export const CREATION_SECONDS = 4.6;
+export const CREATION_SECONDS = 6.2;
 export const MAX_ENERGY_ROUTES = 4;
 export type OrbEffect = {
   id: string;

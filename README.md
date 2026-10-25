@@ -36,6 +36,8 @@ Before the first v3 save over existing v2 primary data, the original v2 bytes ar
 
 ## Verification
 
+The [final electrical sequence report](docs/electrical-final/README.md) covers the 6.2-second creation sequence, full pedestal bus, exact rail-sector convergence, circular gates, rapid-save recording, and desktop recovery checks.
+
 See [current electrical refinement](docs/electrical/README.md), [V2.2 verification](docs/constellation/README.md), [integration verification](docs/integration/README.md), [foundation verification](docs/verification.md), and [planner screenshots](docs/screenshots). Historical visual experiments and their evidence remain in `docs/auditions`, `docs/world`, `docs/crystal`, `docs/gemstone`, `docs/lumen`, and `docs/optical`; their comparison controls are no longer part of the application. `npm audit` reports zero known vulnerabilities at implementation time. Build warns about the large lazy WebLLM/Wasm chunks; ordinary planner startup loads the smaller application bundle and does not initialize inference.
 
 ## Selected visual environment
