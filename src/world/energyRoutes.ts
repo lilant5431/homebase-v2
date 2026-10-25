@@ -7,13 +7,13 @@ export function creationPhase(age: number) {
   const t = T.MathUtils.clamp(age / CREATION_SECONDS, 0, 1);
   return {
     t,
-    gather: smooth(t, 0, 0.22),
-    rise: smooth(t, 0.18, 0.44),
-    travel: smooth(t, 0.44, 0.62),
-    rail: smooth(t, 0.62, 0.84),
-    compress: smooth(t, 0.84, 0.94),
-    materialize: smooth(t, 0.92, 1),
-    envelope: smooth(t, 0, 0.035) * (1 - smooth(t, 0.94, 1)),
+    gather: smooth(t, 0, 0.18),
+    rise: smooth(t, 0.12, 0.34),
+    travel: smooth(t, 0.3, 0.5),
+    rail: smooth(t, 0.48, 0.75),
+    compress: smooth(t, 0.72, 0.88),
+    materialize: smooth(t, 0.86, 0.98),
+    envelope: smooth(t, 0, 0.035) * (1 - smooth(t, 0.9, 1)),
   };
 }
 /** Both fronts start at the discharge contact and arrive at the session angle.
@@ -100,6 +100,11 @@ export function createEnergyRoutes(scene: T.Scene, ticks: T.Mesh[]) {
     color: new T.Color(1.2, 2.2, 2.7),
   });
   const busMaterial = new T.MeshBasicMaterial();
+  // Fixed presentation-only slots, sampled by the crystal's refracted interior.
+  const internalBranches = Array.from(
+    { length: MAX_ENERGY_ROUTES },
+    () => new T.Vector4(),
+  );
   const originals = ticks.map((tick) => tick.material);
   const a = new T.Vector3(),
     b = new T.Vector3(),
@@ -155,6 +160,9 @@ export function createEnergyRoutes(scene: T.Scene, ticks: T.Mesh[]) {
     (from: T.Vector3, to: T.Vector3) => (t: number, out: T.Vector3) =>
       out.lerpVectors(from, to, t);
   return {
+    internalBranches() {
+      return internalBranches;
+    },
     render(
       effects: readonly OrbEffect[],
       time: number,
@@ -171,6 +179,7 @@ export function createEnergyRoutes(scene: T.Scene, ticks: T.Mesh[]) {
         tick.scale.setScalar(1);
       });
       vertexCount = 0;
+      internalBranches.forEach((branch) => branch.set(0, 0, 0, 0));
       let power = 0;
       const routes = quiet
         ? []
@@ -184,7 +193,7 @@ export function createEnergyRoutes(scene: T.Scene, ticks: T.Mesh[]) {
             )
             .slice(-MAX_ENERGY_ROUTES);
       const chargeOf = (t: number) =>
-        smooth(t, 0, 0.035) * (1 - smooth(t, 0.43, 0.64));
+        smooth(t, 0, 0.035) * (1 - smooth(t, 0.36, 0.58));
       const platformCharge = Math.max(
         0,
         ...routes.map((e) => chargeOf(creationPhase(time - e.time).t)),
@@ -223,6 +232,19 @@ export function createEnergyRoutes(scene: T.Scene, ticks: T.Mesh[]) {
             0.018,
             192,
           );
+        // A circulating front makes the full bus read as routed current.
+        for (const direction of [-1, 1])
+          arc(
+            (t, out) => {
+              const angle = direction * time * 4.5 + t * 1.1;
+              return out.set(Math.sin(angle) * 5.5, 0.1, Math.cos(angle) * 5.5);
+            },
+            platformCharge * 0.85,
+            0.14,
+            0,
+            0.025,
+            32,
+          );
       }
       arc(
         line(base, core),
@@ -231,7 +253,7 @@ export function createEnergyRoutes(scene: T.Scene, ticks: T.Mesh[]) {
         Math.floor(time * 14),
         0.075,
       );
-      for (const effect of routes) {
+      for (const [routeIndex, effect] of routes.entries()) {
         const phase = creationPhase(time - effect.time),
           node = routeNode(effect.id);
         const seed = node + Math.floor(time * 14);
@@ -242,21 +264,35 @@ export function createEnergyRoutes(scene: T.Scene, ticks: T.Mesh[]) {
             Math.pow(0.5 + 0.5 * Math.sin((time - effect.time) * 25 + node), 6);
         const charge = chargeOf(phase.t) * budget;
         const discharge =
-          smooth(phase.t, 0.42, 0.47) *
-          (1 - smooth(phase.t, 0.63, 0.7)) *
+          smooth(phase.t, 0.28, 0.34) *
+          (1 - smooth(phase.t, 0.5, 0.57)) *
           budget;
         const reception =
-          smooth(phase.t, 0.6, 0.65) *
-          (1 - smooth(phase.t, 0.91, 0.98)) *
-          budget;
+          smooth(phase.t, 0.47, 0.52) * (1 - smooth(phase.t, 0.88, 1)) * budget;
         power = Math.min(1, power + phase.envelope * (0.2 + phase.rise * 0.55));
         destination(effect, end);
         rail(effect, 0.9, contact);
+        const internalStrength =
+          (smooth(phase.t, 0.08, 0.22) * (1 - smooth(phase.t, 0.45, 0.64))) /
+          Math.max(1, routes.length);
+        internalBranches[routeIndex].set(
+          contact.x,
+          contact.y,
+          contact.z,
+          internalStrength,
+        );
         for (let branch = 0; branch < 3; branch++) {
           const n = (node + branch * 32) % 96,
             angle = (n / 96) * Math.PI * 2;
           start.set(Math.sin(angle) * 5.5, 0.08, Math.cos(angle) * 5.5);
-          arc(line(start, base), charge * strike, 0.065, seed + branch, 0.14);
+          const inward = phase.gather;
+          arc(
+            (t, out) => out.lerpVectors(start, base, t * inward),
+            charge * (0.5 + strike * 0.5),
+            0.085,
+            seed + branch,
+            0.14,
+          );
           // Outer bus ties adjacent instruments together before feeding the core.
           arc(
             (t, out) =>
@@ -279,7 +315,7 @@ export function createEnergyRoutes(scene: T.Scene, ticks: T.Mesh[]) {
         }
         // Directed discharge reaches the intended sector, then charges its rail.
         arc(
-          line(core, contact),
+          (t, out) => out.lerpVectors(core, contact, t * phase.travel),
           discharge * (0.6 + strike * 0.4),
           0.11,
           seed,
@@ -288,7 +324,7 @@ export function createEnergyRoutes(scene: T.Scene, ticks: T.Mesh[]) {
         );
         arc(
           (t, out) => {
-            out.lerpVectors(core, contact, t);
+            out.lerpVectors(core, contact, t * phase.travel);
             out.y += Math.sin(t * Math.PI) * 0.4;
             return out;
           },
@@ -330,8 +366,8 @@ export function createEnergyRoutes(scene: T.Scene, ticks: T.Mesh[]) {
           40,
         );
         const compression =
-          smooth(phase.t, 0.82, 0.87) * (1 - smooth(phase.t, 0.95, 1)) * budget;
-        // Bridge the small depth offset to a concentrated six-spoke knot.
+          smooth(phase.t, 0.72, 0.8) * (1 - smooth(phase.t, 0.92, 1)) * budget;
+        // Compression is centered on the conductor, exactly like the orb.
         rail(effect, 0, contact);
         arc(line(contact, end), compression, 0.1, seed, 0.05, 12);
         const knotRadius = 0.65 * (1 - phase.compress) + 0.035;

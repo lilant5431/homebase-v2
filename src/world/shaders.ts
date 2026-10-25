@@ -39,6 +39,7 @@ export const crystalFragment = /* glsl */ `
   uniform mat4 uWorldMatrix;
   uniform mat4 uInverseWorld;
   uniform vec4 uPlanes[PLANE_COUNT];
+  uniform vec4 uDischarges[4];
   ${lightResponse}
   uniform float uTime;
   uniform float uEnergy;
@@ -105,6 +106,36 @@ export const crystalFragment = /* glsl */ `
       *(erfApprox((a*len+b)/denom)-erfApprox(b/denom));
     return max(0.,integral);
   }
+  // Finite refracted-ray / filament distance. Evaluated on the actual internal
+  // optical segments, so lightning has parallax, facet refraction and occlusion.
+  float filament(vec3 p,vec3 d,float len,vec3 a,vec3 b) {
+    vec3 axis=b-a;float axis2=max(dot(axis,axis),.00001);
+    vec3 w=p-a;float proj=dot(d,axis),denom=max(axis2-proj*proj,.00001);
+    float t=clamp((proj*dot(axis,w)-axis2*dot(d,w))/denom,0.,len);
+    float s=clamp(dot(p+d*t-a,axis)/axis2,0.,1.);
+    t=clamp(dot(a+axis*s-p,d),0.,len);
+    float distance=length(p+d*t-a-axis*s);
+    return exp(-distance*distance/.0012)*2.2+exp(-distance*distance/.012)*.32;
+  }
+  float internalElectricity(vec3 p,vec3 d,float len) {
+    float energy=0.,charge=0.;
+    for(int i=0;i<4;i++) {
+      vec4 event=uDischarges[i];
+      charge+=event.w;
+      if(event.w>.001) {
+        vec3 hub=vec3(0.,.15,0.);
+        vec3 elbow=mix(hub,event.xyz,.54)+vec3(.16,.24,-.12);
+        float pulse=.65+.35*pow(.5+.5*sin(uTime*24.+float(i)*1.7),4.);
+        energy+=(filament(p,d,len,hub,elbow)+filament(p,d,len,elbow,event.xyz))*event.w*pulse;
+      }
+    }
+    // One organized trunk; concurrent arrivals divide into destination branches.
+    if(charge>.001) {
+      vec3 a=vec3(0.,-4.,0.),b=vec3(.45,-2.6,.18),c=vec3(-.36,-1.1,-.14),hub=vec3(0.,.15,0.);
+      energy+=(filament(p,d,len,a,b)+filament(p,d,len,b,c)+filament(p,d,len,c,hub))*min(charge,1.);
+    }
+    return energy;
+  }
   vec3 traceBand(vec3 entry, vec3 ray, vec3 normal, float ior) {
     vec3 d = refract(ray,normal,1./ior);
     vec3 p = entry+ d*.002;
@@ -119,6 +150,7 @@ export const crystalFragment = /* glsl */ `
       float mantle=spineIntegral(p,d,lengthInCrystal,.34)*2.2;
       float aura=spineIntegral(p,d,lengthInCrystal,.75)*.18;
       vec3 emission=vec3(.72,.92,1.)*spine+mix(vec3(.18,.6,.9),uTint,.35)*(mantle+aura);
+      emission+=vec3(.25,.8,1.3)*internalElectricity(p,d,lengthInCrystal)*3.;
       emission=emission/(1.+emission*.12);
       sum+=throughput*sqrt(attenuation)*emission*(.45+.55*uEnergy)*(1.+uFlash*.24);
       throughput*=attenuation;

@@ -116,15 +116,12 @@ export function createOrbLayer(
   >();
   function at(orb: WorldOrb, halos: T.Group[], out: T.Vector3) {
     // Shared 24-hour dial on past-date / today / future-date rings.
-    const radius = 7.1 + orb.lane * 0.9 + (orb.radialOffset || 0);
-    out.set(
-      Math.cos(orb.angle) * radius,
-      Math.sin(orb.angle) * radius,
-      0.2 + orb.spread,
-    );
+    const radius = 7.1 + orb.lane * 0.9;
+    out.set(Math.cos(orb.angle) * radius, Math.sin(orb.angle) * radius, 0);
     return halos[orb.lane].localToWorld(out);
   }
   return {
+    internalBranches: routes.internalBranches,
     energy() {
       return energy;
     },

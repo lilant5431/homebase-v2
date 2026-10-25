@@ -8,6 +8,7 @@ import {
   createOrbLifecycle,
   MAX_ENERGY_ROUTES,
   CREATION_SECONDS,
+  type OrbEffect,
 } from "./orbLifecycle";
 import { createLightEvents } from "./lightEvents";
 import type { WorldInput, OrbProjection } from "./contract";
@@ -75,6 +76,118 @@ describe("temporal presentation, independent of device timezone", () => {
   });
 });
 describe("causal bounded energy routes", () => {
+  it("keeps an in-flight birth when a neighboring save changes obsolete crowding offsets", () => {
+    const orb = scheduleOrbs(seed(), "2099-01-01T00:00")[0];
+    const life = createOrbLifecycle([]);
+    life.update([orb], null, 0, false);
+    const birth = life.sample(0.2).effects[0];
+    const reranked = {
+      ...orb,
+      spread: orb.spread + 0.025,
+      radialOffset: 0.018,
+    };
+    life.update(
+      [{ ...orb, id: "neighbor", angle: orb.angle + 0.1 }, reranked],
+      null,
+      0.3,
+      false,
+    );
+    expect(life.sample(0.3).effects.find((e) => e.id === orb.id)).toBe(birth);
+    expect(life.sample(0.3).effects.find((e) => e.id === orb.id)?.kind).toBe(
+      "creation",
+    );
+  });
+  it("centers every saved light and its selected focus on the actual transformed rail", () => {
+    const prototype = scheduleOrbs(seed(), "2099-01-01T00:00")[0];
+    const orbs = [0, 1, 2].map((lane) => ({
+      ...prototype,
+      id: `lane-${lane}`,
+      lane,
+      angle: lane * 1.2,
+      spread: 0.575,
+      radialOffset: 0.27,
+    }));
+    const scene = new T.Scene();
+    const input: WorldInput = {
+      area: "week",
+      emphasis: false,
+      reducedMotion: false,
+      orbs,
+      selectedOrb: orbs[1].id,
+    };
+    const layer = createOrbLayer(
+      scene,
+      input,
+      {
+        metrics() {},
+        error(e) {
+          throw e;
+        },
+      },
+      () => {},
+    );
+    const halos = orbs.map((_, i) => {
+      const h = new T.Group();
+      h.position.set(1, 4 + i * 2, 0);
+      h.rotation.set(1.71, 0, i * 0.3);
+      h.scale.setScalar(0.82);
+      return h;
+    });
+    const camera = new T.PerspectiveCamera(43, 1.6, 0.2, 140);
+    camera.position.set(0, 7, 26);
+    camera.lookAt(0, 6, 0);
+    for (const time of [0, 0.4, 1.1]) {
+      halos.forEach((h) => (h.rotation.z += 0.08));
+      layer.render(time, halos, camera);
+      for (const orb of orbs) {
+        const radius = 7.1 + orb.lane * 0.9;
+        const expected = halos[orb.lane].localToWorld(
+          new T.Vector3(
+            Math.cos(orb.angle) * radius,
+            Math.sin(orb.angle) * radius,
+            0,
+          ),
+        );
+        expect(layer.positionOf(orb.id)!.distanceTo(expected)).toBeLessThan(
+          1e-10,
+        );
+      }
+    }
+    layer.dispose();
+  });
+  it("coordinates internal energy into fixed destination slots and clears them on quiet/recovery", () => {
+    const scene = new T.Scene(),
+      routes = createEnergyRoutes(scene, []);
+    const orb = scheduleOrbs(seed(), "2099-01-01T00:00")[0];
+    const effects = Array.from({ length: 8 }, (_, i) => ({
+      id: String(i),
+      kind: "creation" as const,
+      time: 0,
+      to: { ...orb, angle: i },
+    }));
+    const rail = (e: OrbEffect, a: number, out: T.Vector3) =>
+      out.set(Math.cos(e.to!.angle + a) * 8, 6, Math.sin(e.to!.angle + a) * 8);
+    const target = (e: OrbEffect, out: T.Vector3) => rail(e, 0, out);
+    routes.render(effects, CREATION_SECONDS * 0.3, target, rail, false);
+    expect(routes.internalBranches()).toHaveLength(4);
+    expect(
+      routes.internalBranches().reduce((sum, v) => sum + v.w, 0),
+    ).toBeCloseTo(1);
+    const directions = routes.internalBranches().map((v) => `${v.x}:${v.z}`);
+    expect(new Set(directions).size).toBe(4);
+    routes.render(
+      effects.slice(0, 1),
+      CREATION_SECONDS * 0.3,
+      target,
+      rail,
+      false,
+    );
+    expect(routes.internalBranches().filter((v) => v.w > 0)).toHaveLength(1);
+    expect(routes.internalBranches()[0].w).toBe(1);
+    routes.render(effects, CREATION_SECONDS * 0.3, target, rail, true);
+    expect(routes.internalBranches().every((v) => v.w === 0)).toBe(true);
+    routes.dispose();
+  });
   it("interrupts unmaterialized creation without a bright jump to the destination, even at the same clock tick", () => {
     for (const kind of ["completion", "deletion", "move"] as const) {
       const scene = new T.Scene(),
@@ -140,15 +253,14 @@ describe("causal bounded energy routes", () => {
     expect(charged.rail).toBe(0);
     expect(charged.materialize).toBe(0);
     expect(creationPhase(CREATION_SECONDS * 0.62).travel).toBe(1);
-    expect(creationPhase(CREATION_SECONDS * 0.84)).toMatchObject({
+    expect(creationPhase(CREATION_SECONDS * 0.75)).toMatchObject({
       rail: 1,
-      compress: 0,
       materialize: 0,
     });
     expect(creationPhase(CREATION_SECONDS * 0.92).compress).toBeGreaterThan(
       0.89,
     );
-    expect(creationPhase(CREATION_SECONDS * 0.92).materialize).toBeCloseTo(
+    expect(creationPhase(CREATION_SECONDS * 0.86).materialize).toBeCloseTo(
       0,
       12,
     );
@@ -158,8 +270,8 @@ describe("causal bounded energy routes", () => {
     });
   });
   it("wraps the entire platform and both rail fronts converge at the saved sector", () => {
-    expect(CREATION_SECONDS).toBeGreaterThan(5.5);
-    expect(CREATION_SECONDS).toBeLessThan(7);
+    expect(CREATION_SECONDS).toBeGreaterThan(4);
+    expect(CREATION_SECONDS).toBeLessThan(6.2);
     const start = railFronts(0),
       finish = railFronts(1);
     expect(start.map((p) => p.tip)).toEqual([0.9, 0.9]);
@@ -248,7 +360,7 @@ describe("causal bounded energy routes", () => {
       mesh.geometry.getAttribute("position").count,
     );
     // Between discharge and compression ONLY ring-bound electricity is drawn.
-    routes.render(effects, CREATION_SECONDS * 0.76, target, rail, false);
+    routes.render(effects, CREATION_SECONDS * 0.67, target, rail, false);
     const vertices = mesh.geometry.getAttribute("position"),
       point = new T.Vector3();
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);

@@ -285,7 +285,8 @@ export function createWorld(
       const radius = 7.1 + i * 0.9;
       const rails = new T.Group();
       const arcGeometry = own(
-        new T.TorusGeometry(radius, 0.085, 12, 80, Math.PI / 2 - 0.075),
+        // Continuous conductor through gate centers, including quarter-day births.
+        new T.TorusGeometry(radius, 0.085, 12, 80, Math.PI / 2),
       );
       const channelGeometry = own(
         new T.TorusGeometry(radius + 0.13, 0.028, 10, 80, Math.PI / 2 - 0.12),
@@ -379,6 +380,9 @@ export function createWorld(
           uTint: tint,
           uLight: { value: movingLight.position },
           uEmphasis: { value: 0 },
+          uDischarges: {
+            value: Array.from({ length: 4 }, () => new T.Vector4()),
+          },
         },
         side: T.FrontSide,
       }),
@@ -693,6 +697,23 @@ export function createWorld(
         });
         constellation = orbLayer.render(elapsed, halos, camera);
         const routedEnergy = orbLayer.energy();
+        glass.uniforms.uDischarges.value.forEach(
+          (value: T.Vector4, i: number) => {
+            const branch = orbLayer.internalBranches()[i];
+            const local = new T.Vector3(
+              branch.x,
+              branch.y,
+              branch.z,
+            ).applyMatrix4(glass.uniforms.uInverseWorld.value);
+            const radius = Math.max(0.001, Math.hypot(local.x, local.z));
+            value.set(
+              (local.x / radius) * 1.7,
+              T.MathUtils.clamp(local.y * 0.5, -1.8, 1.8),
+              (local.z / radius) * 1.7,
+              branch.w,
+            );
+          },
+        );
         circuit.uFlash.value = Math.min(
           1.5,
           response.flash + routedEnergy * 0.65,

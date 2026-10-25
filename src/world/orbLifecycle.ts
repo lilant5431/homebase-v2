@@ -1,5 +1,5 @@
 import type { WorldOrb } from "./contract";
-export const CREATION_SECONDS = 6.2;
+export const CREATION_SECONDS = 5;
 export const MAX_ENERGY_ROUTES = 4;
 export type OrbEffect = {
   id: string;
@@ -53,10 +53,7 @@ export function createOrbLifecycle(
           else if (
             old &&
             !orb.completed &&
-            (old.angle !== orb.angle ||
-              old.lane !== orb.lane ||
-              old.spread !== orb.spread ||
-              old.radialOffset !== orb.radialOffset)
+            (old.angle !== orb.angle || old.lane !== orb.lane)
           )
             emit({ id: orb.id, kind: "move", time, from: old, to: orb });
         }
