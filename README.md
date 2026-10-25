@@ -36,7 +36,7 @@ Before the first v3 save over existing v2 primary data, the original v2 bytes ar
 
 ## Verification
 
-The [current energy refinement](docs/electrical-interior/README.md) covers the 5-second overlapping sequence, refracted internal branching, full pedestal routing, rail-centered lights and rapid-event evidence. The [previous electrical report](docs/electrical-final/README.md) preserves the earlier comparison.
+The [current energy density/grouping report](docs/energy-density/README.md) covers coordinated rapid creation, opening time gates, denser convergence and beam balance. [Internal energy refinement](docs/electrical-interior/README.md) and the [earlier electrical report](docs/electrical-final/README.md) preserve previous evidence.
 
 See [current electrical refinement](docs/electrical/README.md), [V2.2 verification](docs/constellation/README.md), [integration verification](docs/integration/README.md), [foundation verification](docs/verification.md), and [planner screenshots](docs/screenshots). Historical visual experiments and their evidence remain in `docs/auditions`, `docs/world`, `docs/crystal`, `docs/gemstone`, `docs/lumen`, and `docs/optical`; their comparison controls are no longer part of the application. `npm audit` reports zero known vulnerabilities at implementation time. Build warns about the large lazy WebLLM/Wasm chunks; ordinary planner startup loads the smaller application bundle and does not initialize inference.
 

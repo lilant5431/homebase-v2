@@ -2,7 +2,8 @@ import * as T from "three";
 import type { WorldInput, WorldHooks, WorldOrb } from "./contract";
 import {
   createOrbLifecycle,
-  MAX_ENERGY_ROUTES,
+  creationAge,
+  routedCreations,
   type OrbEffect,
 } from "./orbLifecycle";
 import { createEnergyRoutes, creationPhase } from "./energyRoutes";
@@ -122,6 +123,7 @@ export function createOrbLayer(
   }
   return {
     internalBranches: routes.internalBranches,
+    railEnergies: routes.railEnergies,
     energy() {
       return energy;
     },
@@ -174,26 +176,23 @@ export function createOrbLayer(
       for (const [id, anchor] of anchors)
         if (!effects.includes(anchor.effect)) anchors.delete(id);
       const activeBirths = new Set(
-        effects
-          .filter((e) => e.kind === "creation" && !anchors.has(e.id))
-          .slice(-MAX_ENERGY_ROUTES)
-          .map((e) => e.id),
+        routedCreations(
+          effects.filter((e) => !anchors.has(e.id)),
+          time,
+        ).map((e) => e.id),
       );
       energy = routes.render(
         effects.filter((e) => !anchors.has(e.id)),
         time,
         (e, out) => at(e.to!, halos, out),
-        (e, angleOffset, out) =>
-          at(
-            {
-              ...e.to!,
-              angle: e.to!.angle + angleOffset,
-              spread: -0.2,
-              radialOffset: 0,
-            },
-            halos,
-            out,
-          ),
+        (e, angleOffset, out, radialLift = 0) => {
+          const orb = e.to!,
+            angle = orb.angle + angleOffset,
+            radius = 7.1 + orb.lane * 0.9 + radialLift;
+          return halos[orb.lane].localToWorld(
+            out.set(Math.cos(angle) * radius, Math.sin(angle) * radius, 0),
+          );
+        },
         input.reducedMotion,
       );
       const effectsById = new Map(effects.map((e) => [e.id, e]));
@@ -220,7 +219,7 @@ export function createOrbLayer(
         pos.copy(target);
         let alpha = 1;
         if (birth) {
-          const phase = creationPhase(age);
+          const phase = creationPhase(creationAge(effect!, time));
           alpha = phase.materialize;
         }
         if (effect?.kind === "move" && effect.from) {

@@ -2,13 +2,20 @@ import { describe, it, expect } from "vitest";
 import * as T from "three";
 import { seed, type Block } from "../domain";
 import { scheduleOrbs } from "../constellation/adapter";
-import { creationPhase, createEnergyRoutes, railFronts } from "./energyRoutes";
+import {
+  creationPhase,
+  createEnergyRoutes,
+  railFronts,
+  poseEnergyGate,
+} from "./energyRoutes";
 import { createOrbLayer } from "./orbLayer";
 import {
   createOrbLifecycle,
   MAX_ENERGY_ROUTES,
   CREATION_SECONDS,
   type OrbEffect,
+  creationAge,
+  routedCreations,
 } from "./orbLifecycle";
 import { createLightEvents } from "./lightEvents";
 import type { WorldInput, OrbProjection } from "./contract";
@@ -76,6 +83,139 @@ describe("temporal presentation, independent of device timezone", () => {
   });
 });
 describe("causal bounded energy routes", () => {
+  it("uses the shared physical gate opening for overlapping cohorts on the same rail", () => {
+    const orb = scheduleOrbs(seed(), "2099-01-01T00:00")[0],
+      life = createOrbLifecycle([]);
+    const nodes = Array.from({ length: 4 }, (_, i) => ({
+      ...orb,
+      id: `pose-${i}`,
+      lane: 1,
+      angle: i * 0.5,
+    }));
+    for (const [i, t] of [0, 0.1, 1.2, 1.3].entries())
+      life.update(nodes.slice(0, i + 1), null, t, false);
+    const scene = new T.Scene(),
+      routes = createEnergyRoutes(scene, []),
+      lifts: { id: string; lift: number }[] = [];
+    const rail = (e: OrbEffect, a: number, out: T.Vector3, lift = 0) => {
+      if (lift > 0) lifts.push({ id: e.id, lift });
+      return out.set(
+        Math.cos(e.to!.angle + a) * (8 + lift),
+        6,
+        Math.sin(e.to!.angle + a) * (8 + lift),
+      );
+    };
+    routes.render(
+      life.sample(2.9).effects,
+      2.9,
+      (e, out) => rail(e, 0, out),
+      rail,
+      false,
+    );
+    expect(new Set(lifts.map((v) => v.id)).size).toBe(2);
+    expect(lifts).toHaveLength(8);
+    for (const v of lifts)
+      expect(v.lift).toBeCloseTo(routes.railEnergies()[1].opening * 0.85, 12);
+    routes.dispose();
+  });
+  it("orchestrates rolling rapid births on a stable shared clock, including interruption and late settling", () => {
+    const orb = scheduleOrbs(seed(), "2099-01-01T00:00")[0],
+      life = createOrbLifecycle([]);
+    const nodes = Array.from({ length: 5 }, (_, i) => ({
+      ...orb,
+      id: `cohort-${i}`,
+      angle: i * 0.5,
+    }));
+    for (let i = 0; i < 5; i++)
+      life.update(nodes.slice(0, i + 1), null, i * 0.6, false);
+    const effects = life.sample(2.4).effects;
+    expect(effects).toHaveLength(5);
+    expect(new Set(effects.map((e) => e.batch)).size).toBe(1);
+    expect(effects[0].batch?.grouped).toBe(true);
+    expect(new Set(effects.map((e) => creationAge(e, 3))).size).toBe(1);
+    expect(routedCreations(effects, 3)).toHaveLength(5);
+    const before = creationAge(effects[1], 3);
+    life.update(nodes.slice(1), null, 3, false);
+    expect(
+      creationAge(
+        life.sample(3).effects.find((e) => e.id === nodes[1].id)!,
+        3,
+      ),
+    ).toBe(before);
+    expect(
+      life.sample(5.9).effects.filter((e) => e.kind === "creation"),
+    ).toHaveLength(4);
+    expect(life.sample(6.5).effects).toEqual([]);
+    life.clear();
+    life.update([...nodes.slice(1), { ...orb, id: "fresh" }], null, 7, false);
+    expect(life.sample(7).effects[0].batch?.grouped).toBe(false);
+  });
+  it("opens and faces all four gates together, with one rail distribution and bounded distinct formations", () => {
+    const orb = scheduleOrbs(seed(), "2099-01-01T00:00")[0],
+      life = createOrbLifecycle([]);
+    const nodes = Array.from({ length: 24 }, (_, i) => ({
+      ...orb,
+      id: String(i),
+      lane: 1,
+      angle: i * 0.24,
+    }));
+    life.update(nodes, null, 0, false);
+    const effects = life.sample(3.5).effects,
+      scene = new T.Scene(),
+      routes = createEnergyRoutes(scene, []);
+    const halo = new T.Group();
+    halo.rotation.set(1.71, 0, 0.4);
+    halo.position.y = 6.1;
+    halo.scale.setScalar(0.82);
+    halo.updateMatrixWorld(true);
+    const rail = (e: OrbEffect, a: number, out: T.Vector3, lift = 0) =>
+      halo.localToWorld(
+        out.set(
+          Math.cos(e.to!.angle + a) * (8 + lift),
+          Math.sin(e.to!.angle + a) * (8 + lift),
+          0,
+        ),
+      );
+    routes.render(effects, 3.5, (e, out) => rail(e, 0, out), rail, false);
+    expect(
+      routes.internalBranches().filter((v) => v.w > 0).length,
+    ).toBeLessThanOrEqual(1);
+    const energy = routes.railEnergies()[1];
+    expect(energy.opening).toBe(1);
+    expect(energy.charge).toBe(1);
+    const source = halo.worldToLocal(new T.Vector3(0, 6.2, 0));
+    for (let j = 0; j < 4; j++) {
+      const angle = Math.PI / 2 - (j * Math.PI) / 2,
+        gate = new T.Group();
+      poseEnergyGate(gate, angle, 8, energy, source);
+      const expected = rail(
+        effects[0],
+        angle - effects[0].to!.angle,
+        new T.Vector3(),
+        energy.opening * 0.85,
+      );
+      expect(
+        halo.localToWorld(gate.position.clone()).distanceTo(expected),
+      ).toBeLessThan(1e-9);
+      const facing = new T.Vector3(0, 0, 1).applyQuaternion(gate.quaternion);
+      expect(
+        facing.dot(source.clone().sub(gate.position).normalize()),
+      ).toBeCloseTo(1, 10);
+    }
+    const mesh = scene.getObjectByName(
+      "electrical-network",
+    ) as T.Mesh<T.BufferGeometry>;
+    routes.render(effects, 4.6, (e, out) => rail(e, 0, out), rail, false);
+    expect(mesh.geometry.drawRange.count).toBeLessThan(
+      mesh.geometry.getAttribute("position").count,
+    );
+    routes.render(effects, 4.6, (e, out) => rail(e, 0, out), rail, true);
+    expect(
+      routes.railEnergies().every((e) => e.charge === 0 && e.opening === 0),
+    ).toBe(true);
+    expect(mesh.geometry.drawRange.count).toBe(0);
+    routes.dispose();
+  });
   it("keeps an in-flight birth when a neighboring save changes obsolete crowding offsets", () => {
     const orb = scheduleOrbs(seed(), "2099-01-01T00:00")[0];
     const life = createOrbLifecycle([]);

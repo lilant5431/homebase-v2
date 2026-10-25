@@ -2,6 +2,7 @@ import * as T from "three";
 import { lumenDrive } from "./lumenDrive";
 import { createLightEvents } from "./lightEvents";
 import { createOrbLayer } from "./orbLayer";
+import { poseEnergyGate } from "./energyRoutes";
 import { Reflector } from "three/addons/objects/Reflector.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
@@ -280,10 +281,18 @@ export function createWorld(
       }),
     );
     const halos: T.Group[] = [];
+    const timeGates: T.Group[][] = [];
+    const gateMaterials: T.MeshBasicMaterial[] = [];
     for (let i = 0; i < 3; i++) {
       const halo = new T.Group();
       const radius = 7.1 + i * 0.9;
       const rails = new T.Group();
+      const gates: T.Group[] = [];
+      const gateMaterial = own(
+        new T.MeshBasicMaterial({ color: new T.Color(0.28, 0.55, 0.65) }),
+      );
+      gateMaterials.push(gateMaterial);
+      timeGates.push(gates);
       const arcGeometry = own(
         // Continuous conductor through gate centers, including quarter-day births.
         new T.TorusGeometry(radius, 0.085, 12, 80, Math.PI / 2),
@@ -309,7 +318,7 @@ export function createWorld(
           new T.Vector3(-Math.sin(a), Math.cos(a), 0),
         );
         gate.add(
-          new T.Mesh(collarGeometry, resonance),
+          new T.Mesh(collarGeometry, gateMaterial),
           new T.Mesh(gateTrimGeometry, platinum),
         );
         // Circular energy gates retain one to four luminous quarter-day markers.
@@ -324,6 +333,7 @@ export function createWorld(
           gate.add(marker);
         }
         rails.add(gate);
+        gates.push(gate);
       }
       halo.add(rails);
       halo.position.set(0, 6.1 + i * 0.4, 0);
@@ -696,6 +706,27 @@ export function createWorld(
           }
         });
         constellation = orbLayer.render(elapsed, halos, camera);
+        const sourceLocal = new T.Vector3();
+        timeGates.forEach((gates, lane) => {
+          const energy = orbLayer.railEnergies()[lane];
+          gateMaterials[lane].color.setRGB(
+            0.28 + energy.charge * 1.3,
+            0.55 + energy.charge * 1.7,
+            0.65 + energy.charge * 1.9,
+          );
+          sourceLocal.set(0, 6.2, 0);
+          halos[lane].worldToLocal(sourceLocal);
+          gates.forEach((gate, j) =>
+            poseEnergyGate(
+              gate,
+              Math.PI / 2 - (j * Math.PI) / 2,
+              7.1 + lane * 0.9,
+              energy,
+              sourceLocal,
+            ),
+          );
+          halos[lane].updateMatrixWorld(true);
+        });
         const routedEnergy = orbLayer.energy();
         glass.uniforms.uDischarges.value.forEach(
           (value: T.Vector4, i: number) => {
