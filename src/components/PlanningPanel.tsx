@@ -7,9 +7,11 @@ import { CrystalArtwork } from "./CrystalArtwork";
 export function PlanningPanel({
   state,
   planning,
+  compact = false,
 }: {
   state: State;
   planning: ReturnType<typeof usePlanning>;
+  compact?: boolean;
 }) {
   const {
     request,
@@ -33,13 +35,17 @@ export function PlanningPanel({
           <span className="spark-icon">
             <Sparkles size={18} />
           </span>
-          <span>Intelligence, in your corner.</span>
+          <span>
+            {compact ? "ON-DEVICE ASSISTANT" : "Intelligence, in your corner."}
+          </span>
           <span className="beta">LAB</span>
         </div>
-        <CrystalArtwork />
-        <h2>Find your flow.</h2>
+        {!compact && <CrystalArtwork />}
+        <h2>{compact ? "Plan a study session." : "Find your flow."}</h2>
         <p>
-          Explore a plan with experimental local AI.
+          {compact
+            ? "Describe a session, then review the proposed time."
+            : "Explore a plan with experimental local AI."}
           <br />
           Check every proposed time before approving.
         </p>
